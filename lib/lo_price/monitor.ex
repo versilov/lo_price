@@ -33,7 +33,7 @@ defmodule LoPrice.Monitor do
   @telegram_chat_id -1_001_481_233_822
 
   # API
-  def start_link() do
+  def start_link(_) do
     GenServer.start_link(__MODULE__, {}, name: __MODULE__)
   end
 
