@@ -87,7 +87,7 @@ defmodule LoPrice.Bot do
     #   reply_markup: %{keyboard: [[%{text: "Location", request_location: true}]]}
     # )
 
-    answer(context, "Price threshold?",
+    answer(context, "Price threshold???",
       reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true}
     )
   end
