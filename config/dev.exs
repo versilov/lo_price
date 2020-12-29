@@ -2,9 +2,9 @@ use Mix.Config
 
 # Configure your database
 config :lo_price, LoPrice.Repo,
-  username: "postgres",
-  password: "postgres",
-  database: "lo_price_dev",
+  username: "catalyst",
+  password: "",
+  database: "lo_price",
   hostname: "localhost",
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

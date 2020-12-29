@@ -6,6 +6,8 @@ defmodule LoPrice.Application do
   use Application
 
   def start(_type, _args) do
+    import Supervisor.Spec
+
     children = [
       # Start the Ecto repository
       LoPrice.Repo,
@@ -14,9 +16,13 @@ defmodule LoPrice.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: LoPrice.PubSub},
       # Start the Endpoint (http/https)
-      LoPriceWeb.Endpoint
+      LoPriceWeb.Endpoint,
       # Start a worker by calling: LoPrice.Worker.start_link(arg)
-      # {LoPrice.Worker, arg}
+      # {LoPrice.Worker, arg},
+      ExGram,
+      {LoPrice.Bot,
+           [method: :polling, token: System.get_env("TELEGRAM_LO_PRICE_BOT_TOKEN")]},
+      supervisor(LoPrice.Monitor, [])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

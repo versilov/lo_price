@@ -25,9 +25,10 @@ secret_key_base =
 
 config :lo_price, LoPriceWeb.Endpoint,
   http: [
-    port: String.to_integer(System.get_env("PORT") || "4000"),
+    port: String.to_integer(System.get_env("PORT") || "3333"),
     transport_options: [socket_opts: [:inet6]]
   ],
+  server: true,
   secret_key_base: secret_key_base
 
 # ## Using releases (Elixir v1.9+)
