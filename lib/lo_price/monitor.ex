@@ -3,7 +3,7 @@ defmodule LoPrice.Monitor do
 
   alias LoPrice.{Bot}
 
-  # use PI
+  use PI
 
   @fish_permalinks [
     # Metro
@@ -78,7 +78,7 @@ defmodule LoPrice.Monitor do
   end
 
   defp check_product_price(permalink, store_id, product, stores) do
-    fresh_product = SberMarket.product(permalink, store_id)
+    fresh_product = SberMarket.product(permalink, store_id) |> pi()
 
     if fresh_product do
       if fresh_product["offer"]["active"] &&
