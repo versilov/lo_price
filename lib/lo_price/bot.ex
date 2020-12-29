@@ -14,7 +14,7 @@ defmodule LoPrice.Bot do
 
   def handle(
         {:text, price_threshold, _msg},
-        %{update: %{message: %{reply_to_message: %{text: "Price threshold?"}}}} = context
+        %{update: %{message: %{reply_to_message: %{text: "Price threshold?"}}}} = _context
       ) do
     pi(price_threshold)
   end
@@ -27,7 +27,7 @@ defmodule LoPrice.Bot do
   end
 
   def handle(
-        {:regex, :sbermarket, %{text: product_url, chat: %{id: chat_id}} = _msg},
+        {:regex, :sbermarket, %{text: product_url, chat: %{id: _chat_id}} = _msg},
         context
       ) do
     [retailer, permalink] =
@@ -58,11 +58,11 @@ defmodule LoPrice.Bot do
   def handle(
         {:callback_query,
          %{
-           data: "city_" <> city = query_data,
-           chat_instance: chat_instance,
+           data: "city_" <> city = _query_data,
+           chat_instance: _chat_instance,
            id: query_id,
            from: %{
-             id: user_id
+             id: _user_id
            },
            message: %{chat: %{id: chat_id}, message_id: message_id}
          }},
@@ -92,7 +92,7 @@ defmodule LoPrice.Bot do
     )
   end
 
-  def handle({:location, %{latitude: lat, longitude: lon}}, context) do
+  def handle({:location, %{latitude: lat, longitude: lon}}, _context) do
     pi({lat, lon})
     :no_answer
   end
