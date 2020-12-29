@@ -7,7 +7,7 @@ use Mix.Config
 database_url =
   System.get_env("LO_PRICE_DATABASE_URL") ||
     raise """
-    environment variable DATABASE_URL is missing.
+    environment variable LO_PRICE_DATABASE_URL is missing.
     For example: ecto://USER:PASS@HOST/DATABASE
     """
 
@@ -19,7 +19,7 @@ config :lo_price, LoPrice.Repo,
 secret_key_base =
   System.get_env("LO_PRICE_SECRET_KEY_BASE") ||
     raise """
-    environment variable SECRET_KEY_BASE is missing.
+    environment variable LO_PRICE_SECRET_KEY_BASE is missing.
     You can generate one by calling: mix phx.gen.secret
     """
 

@@ -78,7 +78,9 @@ defmodule LoPrice.Monitor do
   end
 
   defp check_product_price(permalink, store_id, product, stores) do
-    fresh_product = SberMarket.product(permalink, store_id) |> pi()
+    fresh_product = SberMarket.product(permalink, store_id)
+
+    pi(fresh_product["name"])
 
     if fresh_product do
       if fresh_product["offer"]["active"] &&
