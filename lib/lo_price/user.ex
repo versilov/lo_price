@@ -1,6 +1,8 @@
 defmodule LoPrice.User do
   use Ecto.Schema
-  import Ecto.Changeset
+  import Ecto.{Changeset, Query}
+
+  alias LoPrice.{User, Repo}
 
   schema "users" do
     field :city, :string
@@ -17,4 +19,9 @@ defmodule LoPrice.User do
     |> validate_required([:telegram_user_id, :name, :city])
     |> unique_constraint(:telegram_user_id)
   end
+
+  def by_telegram_id(telegram_user_id), do:
+    User
+    |> where(telegram_user_id: ^telegram_user_id)
+    |> Repo.one()
 end

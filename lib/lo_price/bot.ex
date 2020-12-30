@@ -1,6 +1,8 @@
 defmodule LoPrice.Bot do
   use PI
 
+  alias LoPrice.{Repo, User}
+
   @bot :lopricebot
   use ExGram.Bot,
     name: @bot,
@@ -30,7 +32,7 @@ defmodule LoPrice.Bot do
         {:regex, :sbermarket, %{text: product_url, chat: %{id: _chat_id}} = _msg},
         context
       ) do
-    [retailer, permalink] =
+    [retailer, _permalink] =
       product_url
       |> URI.parse()
       |> Map.get(:path)
@@ -87,13 +89,16 @@ defmodule LoPrice.Bot do
            chat_instance: _chat_instance,
            id: query_id,
            from: %{
-             id: _user_id
-           },
+             id: user_id,
+             first_name: first_name,
+             last_name: last_name
+           } = from,
            message: %{chat: %{id: chat_id}, message_id: message_id}
          }},
         context
       ) do
     pi(city)
+    pi(from)
 
     ExGram.answer_callback_query(query_id,
       bot: @bot,
@@ -105,12 +110,25 @@ defmodule LoPrice.Bot do
       bot: @bot,
       chat_id: chat_id,
       message_id: message_id,
-      reply_markup: create_inline([[%{text: city, callback_data: "noop"}]])
+      reply_markup: create_inline([[%{text: "✅ " <> city, callback_data: "noop"}]])
     )
 
     # answer(context, "Location?",
     #   reply_markup: %{keyboard: [[%{text: "Location", request_location: true}]]}
     # )
+
+    case User.by_telegram_id(user_id) do
+      nil ->
+        %User{}
+        |> User.changeset(%{city: city, name: "#{first_name} #{last_name}", telegram_user_id: user_id})
+        |> Repo.insert()
+
+      user ->
+        user
+        |> User.changeset(%{city: city, name: "#{first_name} #{last_name}"})
+        |> Repo.update()
+    end
+
 
     answer(context,
     """

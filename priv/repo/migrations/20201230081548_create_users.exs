@@ -3,9 +3,9 @@ defmodule LoPrice.Repo.Migrations.CreateUsers do
 
   def change do
     create table(:users) do
-      add :telegram_user_id, :integer
-      add :name, :string
-      add :city, :string
+      add :telegram_user_id, :bigint, null: false
+      add :name, :string, null: false
+      add :city, :string, null: false
 
       timestamps()
     end

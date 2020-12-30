@@ -84,11 +84,17 @@ defmodule SberMarket do
   defp stores_cache() do
     case FastGlobal.get(:sbermarket_stores) do
       nil ->
+        FastGlobal.put(:sbermarket_stores, []) # Put empty list to mark loading in progress
         IO.puts("Loading stores...")
         stores = get!("stores").body["stores"]
         IO.puts("Done loading stores.")
         FastGlobal.put(:sbermarket_stores, stores)
         stores
+
+      # Loading in progress, don't start new one
+      [] ->
+        :timer.sleep(1_000)
+        stores_cache()
 
       stores ->
         stores
