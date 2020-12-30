@@ -3,4 +3,4 @@
 git commit $1 "$2"
 git push
 
-ssh -t -A -S none -q -o ConnectTimeout=60 ex@extrapost.ru 'cd ~/lo_price && git pull && mix ecto.migrate && source ~/.profile && MIX_ENV=prod mix release --overwrite && ./_build/prod/rel/lo_price/bin/lo_price restart'
+ssh -t -A -S none -q -o ConnectTimeout=60 ex@extrapost.ru 'cd ~/lo_price && git pull && MIX_ENV=prod mix ecto.migrate && source ~/.profile && MIX_ENV=prod mix release --overwrite && ./_build/prod/rel/lo_price/bin/lo_price restart'
