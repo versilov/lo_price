@@ -84,7 +84,9 @@ defmodule SberMarket do
   defp stores_cache() do
     case FastGlobal.get(:sbermarket_stores) do
       nil ->
+        IO.puts("Loading stores...")
         stores = get!("stores").body["stores"]
+        IO.puts("Done loading stores.")
         FastGlobal.put(:sbermarket_stores, stores)
         stores
 

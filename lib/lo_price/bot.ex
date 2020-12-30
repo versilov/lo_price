@@ -6,11 +6,11 @@ defmodule LoPrice.Bot do
     name: @bot,
     setup_commands: true
 
-  command("start")
+  command("start", description: "Show start info")
 
   regex(~r/^https:\/\/sbermarket.ru\/.*/iu, :sbermarket)
 
-  def handle({:command, :start, _msg}, context), do: answer(context, "Hi!")
+  def handle({:command, :start, _msg}, context), do: answer(context, "В каком городе отслеживать цены?", reply_markup: cities_buttons())
 
   def handle(
         {:text, price_threshold, _msg},
@@ -37,22 +37,47 @@ defmodule LoPrice.Bot do
       |> String.split("/", trim: true)
       |> pi()
 
-    # answer(
-    #   context,
-    #   text
-    # )
-    cities_buttons =
+    answer(context, "What city?", reply_markup: cities_buttons(retailer))
+  end
+
+  @lines_in_page 5
+  @buttons_in_line 3
+  defp cities_buttons(page \\ 0, retailer \\ nil), do:
       retailer
       |> SberMarket.stores_cities()
       |> Enum.map(
         &%{
           text: &1,
-          callback_data: "city_#{Russian.transliterate(&1)}:#{retailer}:#{permalink}"
+          callback_data: "city_" <> &1
         }
       )
-      |> Enum.chunk_every(3)
+      |> Enum.chunk_every(@buttons_in_line)
+      |> Enum.slice(page * @lines_in_page, @lines_in_page)
+      |> add_browse_buttons(page)
+      |> create_inline()
 
-    answer(context, "What city?", reply_markup: create_inline(cities_buttons))
+  defp add_browse_buttons(buttons, page), do:
+        prev_button(page) ++
+        buttons
+        ++ next_button(page, last_page?(buttons))
+
+  defp last_page?(buttons_page), do: length(buttons_page) < @lines_in_page || length(List.last(buttons_page)) < @buttons_in_line
+
+  defp prev_button(0), do: []
+  defp prev_button(page), do: [[%{text: "Назад", callback_data: "page_#{page-1}"}]]
+
+  defp next_button(page, true = _last_page), do: []
+  defp next_button(page, _last_page), do: [[%{text: "Дальше", callback_data: "page_#{page+1}"}]]
+
+  def handle({:callback_query, %{id: query_id, data: "page_" <> page, message: %{chat: %{id: chat_id}, message_id: message_id}}}, context) do
+      ExGram.answer_callback_query(query_id, bot: @bot)
+
+    ExGram.edit_message_reply_markup(
+      bot: @bot,
+      chat_id: chat_id,
+      message_id: message_id,
+      reply_markup: cities_buttons(String.to_integer(page))
+    )
   end
 
   def handle(
@@ -72,7 +97,7 @@ defmodule LoPrice.Bot do
 
     ExGram.answer_callback_query(query_id,
       bot: @bot,
-      text: "City: #{city}",
+      text: "Ваш город: #{city}",
       cache_time: 1000
     )
 
@@ -80,14 +105,14 @@ defmodule LoPrice.Bot do
       bot: @bot,
       chat_id: chat_id,
       message_id: message_id,
-      reply_markup: create_inline([[%{text: "Location", callback_data: "loc"}]])
+      reply_markup: create_inline([[%{text: city, callback_data: "noop"}]])
     )
 
     # answer(context, "Location?",
     #   reply_markup: %{keyboard: [[%{text: "Location", request_location: true}]]}
     # )
 
-    answer(context, "Price threshold (if price goes lower, we will notify you)?",
+    answer(context, "Бот настроен. Присылайте боту ссылки на карточки товаров на sbermarket.ru, задавайте целевую цену и бот уведомит вас, когда цен снизится до нужного уровня.",
       reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true}
     )
   end
