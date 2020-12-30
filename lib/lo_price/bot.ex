@@ -112,8 +112,11 @@ defmodule LoPrice.Bot do
     #   reply_markup: %{keyboard: [[%{text: "Location", request_location: true}]]}
     # )
 
-    answer(context, "Бот настроен. Присылайте боту ссылки на карточки товаров на sbermarket.ru, задавайте целевую цену и бот уведомит вас, когда цен снизится до нужного уровня.",
-      reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true}
+    answer(context,
+    """
+    Бот настроен. Присылайте боту ссылки на карточки товаров на sbermarket.ru, задавайте целевую цену и бот уведомит вас, когда цена снизится до нужного уровня.
+    Пример ссылки: https://sbermarket.ru/metro/foriel-okhlazhdiennaia-3-4
+    """
     )
   end
 
