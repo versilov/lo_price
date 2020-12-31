@@ -39,4 +39,8 @@ defmodule LoPrice.Monitor do
     monitor
     |> Monitor.changeset(Monitor.maybe_update_price_history(%{}, monitor, current_price))
     |> Repo.update()
+
+  def remove(id), do:
+    Repo.get!(Monitor, id)
+    |> Repo.delete!()
 end

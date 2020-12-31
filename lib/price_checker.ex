@@ -7,7 +7,7 @@ defmodule LoPrice.PriceChecker do
 
     Repo.transaction(fn ->
       stream
-      |> Task.async_stream(fn %{product_id: product_id, user_id: user_id, target_price: target_price, price_history: price_history} = monitor ->
+      |> Task.async_stream(fn %{id: monitor_id, product_id: product_id, user_id: user_id, target_price: target_price, price_history: price_history} = monitor ->
         product = Product.by_id(product_id)
         user = User.by_id(user_id)
 
@@ -30,7 +30,7 @@ defmodule LoPrice.PriceChecker do
                 image_url = hd(sber_product["images"])["original_url"]
                 unit = if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
 
-                Bot.notify_about_price_change(user.telegram_user_id, product.name, store["name"], last_price, current_price, unit, product.url, image_url)
+                Bot.notify_about_price_change(user.telegram_user_id, product.name, store["name"], last_price, target_price, current_price, unit, product.url, image_url, monitor_id)
               end
             end
           end

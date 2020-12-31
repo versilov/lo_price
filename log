@@ -1,0 +1,7 @@
+#!/bin/bash
+
+log_file() { ssh ex@extrapost.ru "ls -t /home/ex/lo_price/_build/prod/rel/lo_price/tmp/log/erlang.log.* | head -2 | tac"; }
+
+echo `log_file`
+
+ssh -t -A -S none -q -o ConnectTimeout=60 ex@extrapost.ru "tail --lines=500 --follow `log_file`"

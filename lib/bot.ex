@@ -173,6 +173,24 @@ defmodule LoPrice.Bot do
     """
     )
   end
+    def handle(
+        {:callback_query,
+         %{
+           data: "remove_monitor_" <> monitor_id = _query_data,
+           id: query_id,
+           message: %{chat: %{id: chat_id}, message_id: message_id}
+         }},
+         context) do
+    monitor_id = String.to_integer(monitor_id)
+    Monitor.remove(monitor_id)
+
+    ExGram.answer_callback_query(query_id,
+      bot: @bot,
+      text: "Удалён из отслеживания.")
+
+    ExGram.delete_message(chat_id, message_id, bot: @bot)
+  end
+
 
   def handle({:location, %{latitude: lat, longitude: lon}}, _context) do
     pi({lat, lon})
@@ -226,11 +244,16 @@ defmodule LoPrice.Bot do
   defp maybe_add_target_price(attrs, nil), do: attrs
   defp maybe_add_target_price(attrs, target_price) when is_integer(target_price), do: Map.put(attrs, :target_price, target_price)
 
-  def notify_about_price_change(chat_id, product_name, store_name, old_price, price, unit \\ nil, product_url, image_url) do
+  def notify_about_price_change(chat_id, product_name, store_name, old_price, target_price, price, unit \\ nil, product_url, image_url, monitor_id) do
     caption =
-      "#{product_name}@#{store_name} — <s>#{Product.format_price(old_price)}</s> #{Product.format_price(price)}#{unit && "/" <> unit || ""}\n#{product_url}"
+      "#{product_name}@#{store_name} — <s>#{Product.format_price(old_price)}</s>→<b>#{Product.format_price(price)}</b>#{unit && "/" <> unit || ""}\n#{product_url}"
 
-    ExGram.send_photo(chat_id, image_url, caption: caption, bot: @bot, parse_mode: "HTML")
+    ExGram.send_photo(chat_id, image_url,
+                      caption: caption, bot: @bot, parse_mode: "HTML",
+                      reply_markup: create_inline([[
+                        %{text: "Уточнить (#{Product.format_price(target_price)})", callback_data: "set_target_#{monitor_id}"},
+                        %{text: "Удалить", callback_data: "remove_monitor_#{monitor_id}"}
+                      ]]))
   end
 
   def list_products(telegram_user_id, context) do
