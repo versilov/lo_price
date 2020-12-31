@@ -64,8 +64,6 @@ defmodule LoPrice.Bot do
         context
       ) do
 
-        pi(msg)
-
     {retailer, permalink} = SberMarket.parse_product_url(product_url)
 
     case User.by_telegram_id(user_id) do
@@ -73,7 +71,10 @@ defmodule LoPrice.Bot do
         select_city(context, retailer)
 
       user ->
-        sber_product = SberMarket.product(permalink)
+        # Get the first retailer store in the users location
+        store_id = SberMarket.stores(retailer, user.city) |> SberMarket.ids() |> hd()
+
+        sber_product = SberMarket.product(permalink, store_id)
 
         current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
 
