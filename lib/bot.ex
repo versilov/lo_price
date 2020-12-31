@@ -1,7 +1,9 @@
 defmodule LoPrice.Bot do
   use PI
 
-  alias LoPrice.{Repo, User}
+  import Ecto.Query
+
+  alias LoPrice.{Repo, User, Product, Monitor}
 
   @bot :lopricebot
   use ExGram.Bot,
@@ -12,14 +14,33 @@ defmodule LoPrice.Bot do
 
   regex(~r/^https:\/\/sbermarket.ru\/.*/iu, :sbermarket)
 
-  def handle({:command, :start, _msg}, context), do: answer(context, "В каком городе отслеживать цены?", reply_markup: cities_buttons())
+  def handle({:command, :start, _msg}, context), do: select_city(context)
+
+  defp select_city(context, retailer \\ nil), do:
+    answer(context, "В каком городе отслеживать цены?", reply_markup: cities_buttons(0, retailer))
 
   def handle(
-        {:text, price_threshold, _msg},
-        %{update: %{message: %{reply_to_message: %{text: "Price threshold?"}}}} = _context
+        {:text, price_threshold, %{from: %{id: user_id}} = msg},
+        %{update: %{message: %{reply_to_message: %{text: "Нужная цена?"}}}} = context
       ) do
     pi(price_threshold)
+    pi(msg)
+    pi(context)
+
+    {target_price, _} = Float.parse(price_threshold)
+    user = User.by_telegram_id(user_id)
+
+    from(
+      m in Monitor,
+      where: m.user_id == ^user.id and m.target_price == 0,
+      update: [
+        set: [target_price: ^to_kop(target_price)]
+      ]
+    )
+    |> Repo.update_all([])
   end
+
+  defp to_kop(float), do: trunc(float*100)
 
   def handle({:text, telegram_bot_text_message, _msg}, context) do
     pi(telegram_bot_text_message)
@@ -29,17 +50,38 @@ defmodule LoPrice.Bot do
   end
 
   def handle(
-        {:regex, :sbermarket, %{text: product_url, chat: %{id: _chat_id}} = _msg},
+        {:regex, :sbermarket, %{text: product_url, chat: %{id: _chat_id}, from: %{id: user_id}} = msg},
         context
       ) do
-    [retailer, _permalink] =
+
+        pi(msg)
+
+    [retailer, permalink] =
       product_url
       |> URI.parse()
       |> Map.get(:path)
       |> String.split("/", trim: true)
       |> pi()
 
-    answer(context, "What city?", reply_markup: cities_buttons(retailer))
+    case User.by_telegram_id(user_id) do
+      nil ->
+        select_city(context, retailer)
+
+      user ->
+        sber_product = SberMarket.product(permalink)
+
+        current_price = sber_product["offer"]["price"] |> to_kop()
+
+        product =
+          %Product{}
+          |> Product.changeset(%{url: product_url, user_id: user.id, retailer: retailer, name: sber_product["name"]})
+          |> Repo.insert!()
+
+        %Monitor{user_id: user.id, product_id: product.id, target_price: 0, price_history: [current_price]}
+        |> Repo.insert!()
+
+        answer(context, "Нужная цена?", reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
+    end
   end
 
   @lines_in_page 5

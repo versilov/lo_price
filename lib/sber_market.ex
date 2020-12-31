@@ -43,13 +43,15 @@ defmodule SberMarket do
       )
 
   # Retailer can be: metro, lenta, alleya
-  def stores(retailer \\ nil) do
+  def stores(retailer \\ nil, city \\ nil) do
     stores_cache()
-    |> filter_by_retailer(retailer)
+    |> filter_stores(retailer, city)
   rescue
     e ->
       nil
   end
+
+  def ids(list), do: Enum.map(list, & &1["id"] || &1[:id])
 
   def stores_by_id(retailer \\ nil),
     do:
@@ -71,13 +73,26 @@ defmodule SberMarket do
       |> Enum.sort(fn {_city1, count1}, {_city2, count2} -> count1 >= count2 end)
       |> Enum.map(fn {city, count} -> city end)
 
-  defp filter_by_retailer(stores, nil), do: stores
+  defp filter_stores(stores, retailer, city), do:
+    stores
+    |> filter_by_retailer(retailer)
+    |> filter_by_city(city)
 
+  defp filter_by_retailer(stores, nil), do: stores
   defp filter_by_retailer(stores, retailer) when is_binary(retailer),
     do:
       stores
       |> Enum.filter(fn
         %{"retailer_slug" => ^retailer} -> true
+        _ -> false
+      end)
+
+  defp filter_by_city(stores, nil), do: stores
+  defp filter_by_city(stores, city) when is_binary(city),
+    do:
+      stores
+      |> Enum.filter(fn
+        %{"location" => %{"city" => ^city}} -> true
         _ -> false
       end)
 

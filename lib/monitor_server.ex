@@ -1,4 +1,4 @@
-defmodule LoPrice.Monitor do
+defmodule LoPrice.MonitorServer do
   use GenServer
 
   alias LoPrice.{Bot}

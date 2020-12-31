@@ -21,7 +21,7 @@ defmodule LoPrice.Application do
       ExGram,
       {LoPrice.Bot,
            [method: :polling, token: System.get_env("TELEGRAM_LO_PRICE_BOT_TOKEN")]},
-      LoPrice.Monitor
+      LoPrice.MonitorServer
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
