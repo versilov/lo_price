@@ -15,11 +15,15 @@ defmodule LoPrice.Bot do
 
   regex(~r/^https:\/\/sbermarket.ru\/.*/iu, :sbermarket)
 
-  def handle({:command, :start, _msg}, context), do: select_city(context)
+  def handle({:command, :start, %{from: %{id: user_id}} = _msg}, context) do
+    user = User.by_telegram_id(user_id)
+    user_city = user && user.city
+    select_city(context, nil, user_city)
+  end
   def handle({:command, :products, %{from: %{id: user_id}} = _msg}, context), do: list_products(user_id, context)
 
-  defp select_city(context, retailer \\ nil), do:
-    answer(context, "В каком городе отслеживать цены?", reply_markup: cities_buttons(0, retailer))
+  defp select_city(context, retailer \\ nil, selected_city \\ nil), do:
+    answer(context, "В каком городе отслеживать цены?", reply_markup: cities_buttons(0, retailer, selected_city))
 
   def handle(
         {:text, price_threshold, %{from: %{id: user_id}} = msg},
@@ -79,12 +83,12 @@ defmodule LoPrice.Bot do
 
   @lines_in_page 5
   @buttons_in_line 3
-  defp cities_buttons(page \\ 0, retailer \\ nil), do:
+  defp cities_buttons(page \\ 0, retailer \\ nil, selected_city \\ nil), do:
       retailer
       |> SberMarket.stores_cities()
       |> Enum.map(
         &%{
-          text: &1,
+          text: if(&1 == selected_city, do: "✅ ", else: "") <> &1,
           callback_data: "city_" <> &1
         }
       )
@@ -107,13 +111,16 @@ defmodule LoPrice.Bot do
   defp next_button(page, _last_page), do: [[%{text: "Дальше", callback_data: "page_#{page+1}"}]]
 
   def handle({:callback_query, %{id: query_id, data: "page_" <> page, message: %{chat: %{id: chat_id}, message_id: message_id}}}, context) do
-      ExGram.answer_callback_query(query_id, bot: @bot)
+    ExGram.answer_callback_query(query_id, bot: @bot)
+
+    user = User.by_telegram_id(chat_id)
+    user_city = user && user.city
 
     ExGram.edit_message_reply_markup(
       bot: @bot,
       chat_id: chat_id,
       message_id: message_id,
-      reply_markup: cities_buttons(String.to_integer(page))
+      reply_markup: cities_buttons(String.to_integer(page), nil, user_city)
     )
   end
 
