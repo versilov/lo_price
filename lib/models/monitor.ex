@@ -9,6 +9,7 @@ defmodule LoPrice.Monitor do
     belongs_to :product, Product
     field :price_history, {:array, :integer}
     field :target_price, :integer
+    field :target_price_message_id, :integer
 
     timestamps()
   end
@@ -16,7 +17,7 @@ defmodule LoPrice.Monitor do
   @doc false
   def changeset(monitor, attrs) do
     monitor
-    |> cast(attrs, [:target_price, :price_history, :user_id, :product_id])
+    |> cast(attrs, [:target_price, :price_history, :user_id, :product_id, :target_price_message_id])
     |> validate_required([:target_price, :price_history, :user_id, :product_id])
   end
 

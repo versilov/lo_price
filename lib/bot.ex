@@ -23,7 +23,7 @@ defmodule LoPrice.Bot do
 
   def handle(
         {:text, price_threshold, %{from: %{id: user_id}} = msg},
-        %{update: %{message: %{reply_to_message: %{text: "Нужная цена?" <> _}}}} = context
+        %{update: %{message: %{reply_to_message: %{text: "Нужная цена?" <> _, message_id: message_id}}}} = context
       ) do
     pi(price_threshold)
     pi(msg)
@@ -34,9 +34,9 @@ defmodule LoPrice.Bot do
 
     from(
       m in Monitor,
-      where: m.user_id == ^user.id and m.target_price == 0,
+      where: m.user_id == ^user.id and m.target_price_message_id == ^message_id,
       update: [
-        set: [target_price: ^Product.to_kop(target_price)]
+        set: [target_price: ^Product.to_kop(target_price), target_price_message_id: nil]
       ]
     )
     |> Repo.update_all([])
@@ -52,7 +52,7 @@ defmodule LoPrice.Bot do
   end
 
   def handle(
-        {:regex, :sbermarket, %{text: product_url, chat: %{id: _chat_id}, from: %{id: user_id}} = msg},
+        {:regex, :sbermarket, %{message_id: message_id, text: product_url, chat: %{id: _chat_id}, from: %{id: user_id}} = msg},
         context
       ) do
 
@@ -71,7 +71,7 @@ defmodule LoPrice.Bot do
 
         product = find_or_create_product(product_url, sber_product["name"], retailer)
 
-        create_or_update_monitor(user.id, product.id, current_price)
+        create_or_update_monitor(user.id, product.id, current_price, nil, message_id + 1)
 
         answer(context, "Нужная цена? (Текущая: #{sber_product["offer"]["unit_price"]}₽)\nОтправьте пустое сообщение, чтобы отслеживать любое снижение цены от текущей.", reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
     end
@@ -193,18 +193,26 @@ defmodule LoPrice.Bot do
     end
   end
 
-  defp create_or_update_monitor(user_id, product_id, current_price, target_price \\ nil) do
+  defp create_or_update_monitor(user_id, product_id, current_price, target_price \\ nil, target_price_message_id \\ nil) do
     case Monitor.by_user_and_product(user_id, product_id) do
       nil ->
-        %Monitor{user_id: user_id, product_id: product_id, target_price: target_price || current_price, price_history: [current_price]}
+        %Monitor{user_id: user_id, product_id: product_id,
+                 target_price: target_price || current_price, price_history: [current_price],
+                  target_price_message_id: target_price_message_id}
         |> Repo.insert!()
 
       monitor ->
         monitor
-        |> Monitor.changeset(%{target_price: target_price} |> Monitor.maybe_update_price_history(monitor, current_price))
-        |> Repo.update()
+        |> Monitor.changeset(%{target_price_message_id: target_price_message_id}
+                             |> Monitor.maybe_update_price_history(monitor, current_price)
+                             |> maybe_add_target_price(target_price)
+                             )
+        |> Repo.update!()
     end
   end
+
+  defp maybe_add_target_price(attrs, nil), do: attrs
+  defp maybe_add_target_price(attrs, target_price) when is_integer(target_price), do: Map.put(attrs, :target_price, target_price)
 
   def notify_about_price_change(chat_id, product_name, store_name, price, unit \\ nil, product_url, image_url) do
     caption =
