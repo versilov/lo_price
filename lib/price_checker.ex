@@ -22,19 +22,16 @@ defmodule LoPrice.PriceChecker do
             pi(sber_product["name"])
             current_price = sber_product["offer"]["unit_price"] && Product.to_kop(sber_product["offer"]["unit_price"])
 
-            if sber_product["offer"]["active"] && current_price &&
-              current_price < target_price &&
-                current_price != last_price do
+            if sber_product["offer"]["active"] && current_price && current_price != last_price do
+              Monitor.update_price_history(monitor, current_price)
 
-                monitor
-                |> Monitor.changeset(Monitor.maybe_update_price_history(%{}, monitor, current_price))
-                |> Repo.update()
-
+              if current_price < target_price do
                 store = SberMarket.store(store_id)
                 image_url = hd(sber_product["images"])["original_url"]
                 unit = if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
 
                 Bot.notify_about_price_change(user.telegram_user_id, product.name, store["name"], last_price, current_price, unit, product.url, image_url)
+              end
             end
           end
         end)

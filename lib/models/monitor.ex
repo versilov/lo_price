@@ -34,4 +34,9 @@ defmodule LoPrice.Monitor do
       attrs
     end
   end
+
+  def update_price_history(monitor, current_price), do:
+    monitor
+    |> Monitor.changeset(Monitor.maybe_update_price_history(%{}, monitor, current_price))
+    |> Repo.update()
 end
