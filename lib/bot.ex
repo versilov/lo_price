@@ -243,7 +243,7 @@ defmodule LoPrice.Bot do
     preload: [:product])
     |> Repo.all()
     |> Enum.map(fn %{id: monitor_id, target_price: tprice, price_history: hprice, product: %{name: product_name, url: product_url, retailer: retailer}} ->
-      "#{product_icon(product_name)}<a href=\"#{product_url}\">#{product_name}</a>@#{retailer} #{Product.format_price(List.last(hprice))}→<i>#{Product.format_price(tprice)}</i>"
+      "#{product_icon(product_name)}<a href=\"#{product_url}\">#{product_name}</a>@#{retailer} <s>#{Product.format_price(List.last(hprice))}</s>→<i>#{Product.format_price(tprice)}</i>"
     end)
     |> Enum.join("\n")
 
