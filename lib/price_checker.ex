@@ -32,7 +32,7 @@ defmodule LoPrice.PriceChecker do
 
                 store = SberMarket.store(store_id)
                 image_url = hd(sber_product["images"])["original_url"]
-                unit = if(sber_product["offer"]["price_type"] == "per_packaget", do: "кг", else: nil)
+                unit = if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
 
                 Bot.notify_about_price_change(user.telegram_user_id, product.name, store["name"], current_price, unit, product.url, image_url)
             end
