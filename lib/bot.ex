@@ -109,10 +109,10 @@ defmodule LoPrice.Bot do
   defp last_page?(buttons_page), do: length(buttons_page) < @lines_in_page || length(List.last(buttons_page)) < @buttons_in_line
 
   defp prev_button(0), do: []
-  defp prev_button(page), do: [[%{text: "Назад", callback_data: "page_#{page-1}"}]]
+  defp prev_button(page), do: [[%{text: "▲ Назад ▲", callback_data: "page_#{page-1}"}]]
 
   defp next_button(page, true = _last_page), do: []
-  defp next_button(page, _last_page), do: [[%{text: "Дальше", callback_data: "page_#{page+1}"}]]
+  defp next_button(page, _last_page), do: [[%{text: "▼ Дальше ▼", callback_data: "page_#{page+1}"}]]
 
   def handle({:callback_query, %{id: query_id, data: "page_" <> page, message: %{chat: %{id: chat_id}, message_id: message_id}}}, context) do
     ExGram.answer_callback_query(query_id, bot: @bot)
