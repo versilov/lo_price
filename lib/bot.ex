@@ -242,8 +242,8 @@ defmodule LoPrice.Bot do
     left_join: product in assoc(m, :product),
     preload: [:product])
     |> Repo.all()
-    |> Enum.map(fn %{id: monitor_id, target_price: tprice, price_history: hprice, product: %{name: product_name, url: product_url}} ->
-      "#{product_icon(product_name)}<a href=\"#{product_url}\">#{product_name}</a> #{Product.format_price(List.last(hprice))}→<i>#{Product.format_price(tprice)}</i>"
+    |> Enum.map(fn %{id: monitor_id, target_price: tprice, price_history: hprice, product: %{name: product_name, url: product_url, retailer: retailer}} ->
+      "#{product_icon(product_name)}<a href=\"#{product_url}\">#{product_name}</a>@#{retailer} #{Product.format_price(List.last(hprice))}→<i>#{Product.format_price(tprice)}</i>"
     end)
     |> Enum.join("\n")
 
