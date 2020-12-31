@@ -21,7 +21,7 @@ defmodule LoPrice.Bot do
 
   def handle(
         {:text, price_threshold, %{from: %{id: user_id}} = msg},
-        %{update: %{message: %{reply_to_message: %{text: "Нужная цена?"}}}} = context
+        %{update: %{message: %{reply_to_message: %{text: "Нужная цена?" <> _}}}} = context
       ) do
     pi(price_threshold)
     pi(msg)
@@ -64,13 +64,13 @@ defmodule LoPrice.Bot do
       user ->
         sber_product = SberMarket.product(permalink)
 
-        current_price = sber_product["offer"]["price"] |> Product.to_kop()
+        current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
 
         product = find_or_create_product(product_url, sber_product["name"], retailer)
 
         create_or_update_monitor(user.id, product.id, current_price)
 
-        answer(context, "Нужная цена?", reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
+        answer(context, "Нужная цена? (Текущая: #{sber_product["offer"]["unit_price"]}₽)", reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
     end
   end
 
