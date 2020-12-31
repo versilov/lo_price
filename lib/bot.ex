@@ -36,14 +36,18 @@ defmodule LoPrice.Bot do
     {target_price, _} = Float.parse(price_threshold)
     user = User.by_telegram_id(user_id)
 
+    target_price = Product.to_kop(target_price)
+
     from(
       m in Monitor,
       where: m.user_id == ^user.id and m.target_price_message_id == ^message_id,
       update: [
-        set: [target_price: ^Product.to_kop(target_price), target_price_message_id: nil]
+        set: [target_price: ^target_price, target_price_message_id: nil]
       ]
     )
     |> Repo.update_all([])
+
+    answer(context, "Сообщу, как подешевеет ниже #{Product.format_price(target_price)}")
   end
 
 
