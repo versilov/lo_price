@@ -241,11 +241,29 @@ defmodule LoPrice.Bot do
     left_join: product in assoc(m, :product),
     preload: [:product])
     |> Repo.all()
-    |> Enum.map(fn %{target_price: tprice, price_history: hprice, product: %{name: product_name, url: product_url}} ->
-      "<a href=\"#{product_url}\">#{product_name}</a> #{Product.format_price(List.last(hprice))}→<i>#{Product.format_price(tprice)}</i>"
+    |> Enum.map(fn %{id: monitor_id, target_price: tprice, price_history: hprice, product: %{name: product_name, url: product_url}} ->
+      "#{product_icon(product_name)}<a href=\"#{product_url}\">#{product_name}</a> #{Product.format_price(List.last(hprice))}→<i>#{Product.format_price(tprice)}</i> ✖️/X#{monitor_id}"
     end)
     |> Enum.join("\n")
 
     answer(context, products_list, parse_mode: "HTML", disable_web_page_preview: true)
+  end
+
+  @product_icons [
+    {~w(сыр),"🧀"},
+    {~w(форель рыба лосось стерлядь сёмга угорь), "🐟"},
+    {~w(стейк), "🥩"}
+  ]
+  defp product_icon(name) do
+    @product_icons
+    |> Enum.find(fn {words, icon} ->
+      name
+      |> String.downcase()
+      |> String.contains?(words)
+    end)
+    |> (fn
+      nil -> ""
+      {_, icon} -> icon <> " "
+    end).()
   end
 end
