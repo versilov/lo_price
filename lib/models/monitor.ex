@@ -1,8 +1,8 @@
 defmodule LoPrice.Monitor do
   use Ecto.Schema
-  import Ecto.Changeset
+  import Ecto.{Changeset, Query}
 
-  alias LoPrice.{User, Product}
+  alias LoPrice.{Repo, User, Product, Monitor}
 
   schema "monitors" do
     belongs_to :user, User
@@ -18,5 +18,19 @@ defmodule LoPrice.Monitor do
     monitor
     |> cast(attrs, [:target_price, :price_history, :user_id, :product_id])
     |> validate_required([:target_price, :price_history, :user_id, :product_id])
+  end
+
+  def by_user_and_product(user_id, product_id) do
+    Monitor
+    |> where(user_id: ^user_id, product_id: ^product_id)
+    |> Repo.one()
+  end
+
+  def maybe_update_price_history(attrs, %{price_history: history}, current_price) do
+    if List.last(history) != current_price do
+      Map.put(attrs, :price_history, history ++ [current_price])
+    else
+      attrs
+    end
   end
 end

@@ -34,13 +34,12 @@ defmodule LoPrice.Bot do
       m in Monitor,
       where: m.user_id == ^user.id and m.target_price == 0,
       update: [
-        set: [target_price: ^to_kop(target_price)]
+        set: [target_price: ^Product.to_kop(target_price)]
       ]
     )
     |> Repo.update_all([])
   end
 
-  defp to_kop(float), do: trunc(float*100)
 
   def handle({:text, telegram_bot_text_message, _msg}, context) do
     pi(telegram_bot_text_message)
@@ -56,12 +55,7 @@ defmodule LoPrice.Bot do
 
         pi(msg)
 
-    [retailer, permalink] =
-      product_url
-      |> URI.parse()
-      |> Map.get(:path)
-      |> String.split("/", trim: true)
-      |> pi()
+    {retailer, permalink} = SberMarket.parse_product_url(product_url)
 
     case User.by_telegram_id(user_id) do
       nil ->
@@ -70,15 +64,11 @@ defmodule LoPrice.Bot do
       user ->
         sber_product = SberMarket.product(permalink)
 
-        current_price = sber_product["offer"]["price"] |> to_kop()
+        current_price = sber_product["offer"]["price"] |> Product.to_kop()
 
-        product =
-          %Product{}
-          |> Product.changeset(%{url: product_url, user_id: user.id, retailer: retailer, name: sber_product["name"]})
-          |> Repo.insert!()
+        product = find_or_create_product(product_url, sber_product["name"], retailer)
 
-        %Monitor{user_id: user.id, product_id: product.id, target_price: 0, price_history: [current_price]}
-        |> Repo.insert!()
+        create_or_update_monitor(user.id, product.id, current_price)
 
         answer(context, "Нужная цена?", reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
     end
@@ -159,18 +149,7 @@ defmodule LoPrice.Bot do
     #   reply_markup: %{keyboard: [[%{text: "Location", request_location: true}]]}
     # )
 
-    case User.by_telegram_id(user_id) do
-      nil ->
-        %User{}
-        |> User.changeset(%{city: city, name: "#{first_name} #{last_name}", telegram_user_id: user_id})
-        |> Repo.insert()
-
-      user ->
-        user
-        |> User.changeset(%{city: city, name: "#{first_name} #{last_name}"})
-        |> Repo.update()
-    end
-
+    create_or_update_user(user_id, city, "#{first_name} #{last_name}")
 
     answer(context,
     """
@@ -183,5 +162,51 @@ defmodule LoPrice.Bot do
   def handle({:location, %{latitude: lat, longitude: lon}}, _context) do
     pi({lat, lon})
     :no_answer
+  end
+
+  defp create_or_update_user(telegram_user_id, city, name) do
+    case User.by_telegram_id(telegram_user_id) do
+      nil ->
+        %User{}
+        |> User.changeset(%{city: city, name: name, telegram_user_id: telegram_user_id})
+        |> Repo.insert()
+
+      user ->
+        user
+        |> User.changeset(%{city: city, name: name})
+        |> Repo.update()
+    end
+  end
+
+  defp find_or_create_product(url, name, retailer) do
+    case Product.by_url(url) do
+      nil ->
+        %Product{}
+        |> Product.changeset(%{url: url, retailer: retailer, name: name})
+        |> Repo.insert!()
+
+      product ->
+        product
+    end
+  end
+
+  defp create_or_update_monitor(user_id, product_id, current_price, target_price \\ nil) do
+    case Monitor.by_user_and_product(user_id, product_id) do
+      nil ->
+        %Monitor{user_id: user_id, product_id: product_id, target_price: target_price || current_price, price_history: [current_price]}
+        |> Repo.insert!()
+
+      monitor ->
+        monitor
+        |> Monitor.changeset(%{target_price: target_price} |> Monitor.maybe_update_price_history(monitor, current_price))
+        |> Repo.update()
+    end
+  end
+
+  def notify_about_price_change(chat_id, product_name, store_name, price, product_url, image_url) do
+    caption =
+      "#{product_name}@#{store_name} — #{price}₽\n#{product_url}"
+
+    ExGram.send_photo(chat_id, image_url, caption: caption)
   end
 end

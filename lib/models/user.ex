@@ -24,4 +24,9 @@ defmodule LoPrice.User do
     User
     |> where(telegram_user_id: ^telegram_user_id)
     |> Repo.one()
+
+  def by_id(user_id), do:
+    User
+    |> where(id: ^user_id)
+    |> Repo.one()
 end

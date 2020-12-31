@@ -53,6 +53,10 @@ defmodule SberMarket do
 
   def ids(list), do: Enum.map(list, & &1["id"] || &1[:id])
 
+  def store(store_id) when is_integer(store_id), do:
+    stores()
+    |> Enum.find(& &1["id"] == store_id)
+
   def stores_by_id(retailer \\ nil),
     do:
       stores(retailer)
@@ -115,4 +119,12 @@ defmodule SberMarket do
         stores
     end
   end
+
+  def parse_product_url(url), do:
+      url
+      |> URI.parse()
+      |> Map.get(:path)
+      |> String.split("/", trim: true)
+      |> List.to_tuple()
+
 end

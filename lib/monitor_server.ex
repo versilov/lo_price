@@ -1,7 +1,7 @@
 defmodule LoPrice.MonitorServer do
   use GenServer
 
-  alias LoPrice.{Bot}
+  alias LoPrice.{Bot, PriceChecker}
 
   use PI
 
@@ -54,20 +54,29 @@ defmodule LoPrice.MonitorServer do
       |> Map.new()
 
     send(self(), :monitor)
+    send(self(), :monitor_predefined)
 
     {:ok, {products, stores}}
   end
 
-  def handle_info(:monitor, {products, stores}) do
+  def handle_info(:monitor_predefined, {products, stores}) do
     products =
       products
       |> Enum.map(fn {store_id, store_products} ->
         {store_id, monitor_store_products(store_id, store_products, stores)}
       end)
 
-    Process.send_after(self(), :monitor, 3600 * 1_000)
+    Process.send_after(self(), :monitor_predefined, 3600 * 1_000)
 
     {:noreply, {products, stores}}
+  end
+
+  def handle_info(:monitor, state) do
+    PriceChecker.check_prices()
+
+    Process.send_after(self(), :monitor, 3500 * 1_000)
+
+    {:noreply, state}
   end
 
   defp monitor_store_products(store_id, products, stores) do
@@ -80,24 +89,19 @@ defmodule LoPrice.MonitorServer do
   defp check_product_price(permalink, store_id, product, stores) do
     fresh_product = SberMarket.product(permalink, store_id)
 
-    pi(fresh_product["name"])
-
     if fresh_product do
       if fresh_product["offer"]["active"] &&
            fresh_product["offer"]["unit_price"] < @acceptable_price_per_kg &&
            (fresh_product["offer"]["active"] != product["offer"]["active"] ||
               fresh_product["offer"]["unit_price"] != product["offer"]["unit_price"]) do
-        image_url = hd(fresh_product["images"])["original_url"]
 
         store_name = stores[store_id] && stores[store_id]["name"]
         retailer = stores[store_id] && stores[store_id]["retailer_slug"]
 
-        caption =
-          "#{fresh_product["name"]}@#{store_name} — #{fresh_product["offer"]["price"]}₽ (#{
-            fresh_product["offer"]["unit_price"]
-          }₽/kg)\nhttps://sbermarket.ru/#{retailer}/#{permalink}"
+        image_url = hd(fresh_product["images"])["original_url"]
+        product_url = "https://sbermarket.ru/#{retailer}/#{permalink}"
 
-        ExGram.send_photo(@telegram_chat_id, image_url, caption: caption)
+        Bot.notify_about_price_change(@telegram_chat_id, fresh_product["name"], store_name, fresh_product["offer"]["unit_price"], product_url, image_url)
 
         product
       end
@@ -108,7 +112,5 @@ defmodule LoPrice.MonitorServer do
     end
   end
 
-  defp load_products(permalinks, stores) do
-    %{}
-  end
+
 end
