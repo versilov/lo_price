@@ -20,11 +20,11 @@ defmodule LoPrice.PriceChecker do
         |> Enum.each(fn store_id ->
           if sber_product = SberMarket.product(permalink, store_id) do
             pi(sber_product["name"])
-            current_price = Product.to_kop(sber_product["offer"]["unit_price"])
+            current_price = sber_product["offer"]["unit_price"] && Product.to_kop(sber_product["offer"]["unit_price"])
 
-            if sber_product["offer"]["active"] &&
+            if sber_product["offer"]["active"] && current_price &&
               current_price < target_price &&
-                Product.to_kop(sber_product["offer"]["unit_price"]) != last_price do
+                current_price != last_price do
 
                 monitor
                 |> Monitor.changeset(Monitor.maybe_update_price_history(%{}, monitor, current_price))
