@@ -43,8 +43,9 @@ defmodule LoPrice.Bot do
   end
 
 
-  def handle({:text, telegram_bot_text_message, _msg}, context) do
+  def handle({:text, telegram_bot_text_message, msg}, context) do
     pi(telegram_bot_text_message)
+    pi(msg)
     pi(context)
     # answer(context, "Не понимаю. Возможные запросы: chat_id")
     :no_answer
@@ -207,9 +208,9 @@ defmodule LoPrice.Bot do
 
   def notify_about_price_change(chat_id, product_name, store_name, price, product_url, image_url) do
     caption =
-      "#{product_name}@#{store_name} — #{price}₽\n#{product_url}"
+      "#{product_name}@#{store_name} — #{Product.format_price(price)}\n#{product_url}"
 
-    ExGram.send_photo(chat_id, image_url, caption: caption)
+    ExGram.send_photo(chat_id, image_url, caption: caption, bot: @bot)
   end
 
   def list_products(telegram_user_id, context) do
