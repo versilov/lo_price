@@ -73,7 +73,7 @@ defmodule LoPrice.Bot do
 
         create_or_update_monitor(user.id, product.id, current_price)
 
-        answer(context, "Нужная цена? (Текущая: #{sber_product["offer"]["unit_price"]}₽)", reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
+        answer(context, "Нужная цена? (Текущая: #{sber_product["offer"]["unit_price"]}₽)\nОтправьте пустое сообщение, чтобы отслеживать любое снижение цены от текущей.", reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
     end
   end
 
