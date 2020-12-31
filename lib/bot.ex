@@ -206,9 +206,9 @@ defmodule LoPrice.Bot do
     end
   end
 
-  def notify_about_price_change(chat_id, product_name, store_name, price, product_url, image_url) do
+  def notify_about_price_change(chat_id, product_name, store_name, price, unit \\ nil, product_url, image_url) do
     caption =
-      "#{product_name}@#{store_name} — #{Product.format_price(price)}\n#{product_url}"
+      "#{product_name}@#{store_name} — #{Product.format_price(price)}/#{unit || ""}\n#{product_url}"
 
     ExGram.send_photo(chat_id, image_url, caption: caption, bot: @bot)
   end
