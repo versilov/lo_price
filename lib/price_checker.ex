@@ -24,7 +24,7 @@ defmodule LoPrice.PriceChecker do
 
             if sber_product["offer"]["active"] &&
               current_price < target_price &&
-                sber_product["offer"]["unit_price"] != last_price do
+                Product.to_kop(sber_product["offer"]["unit_price"]) != last_price do
 
                 monitor
                 |> Monitor.changeset(Monitor.maybe_update_price_history(%{}, monitor, current_price))
