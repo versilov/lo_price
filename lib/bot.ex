@@ -27,11 +27,11 @@ defmodule LoPrice.Bot do
 
   def handle(
         {:text, price_threshold, %{from: %{id: user_id}} = msg},
-        %{update: %{message: %{reply_to_message: %{text: "Нужная цена?" <> _, message_id: message_id}}}} = context
+        %{update: %{message: %{reply_to_message: %{text: "Нужная цена на " <> product_name, message_id: message_id}}}} = context
       ) do
     pi(price_threshold)
-    pi(msg)
-    pi(context)
+
+    product_name = String.trim_trailing(product_name, "?")
 
     {target_price, _} = Float.parse(price_threshold)
     user = User.by_telegram_id(user_id)
@@ -47,7 +47,8 @@ defmodule LoPrice.Bot do
     )
     |> Repo.update_all([])
 
-    answer(context, "Сообщу, как подешевеет ниже #{Product.format_price(target_price)}")
+    answer(context, "Сообщу когда <b>#{product_name}</b> подешевеет ниже <b>#{Product.format_price(target_price)}</b>",
+      parse_mode: "HTML")
   end
 
 
@@ -60,7 +61,7 @@ defmodule LoPrice.Bot do
   end
 
   def handle(
-        {:regex, :sbermarket, %{message_id: message_id, text: product_url, chat: %{id: _chat_id}, from: %{id: user_id}} = msg},
+        {:regex, :sbermarket, %{message_id: message_id, text: product_url, chat: %{id: chat_id}, from: %{id: user_id}} = msg},
         context
       ) do
 
@@ -80,9 +81,21 @@ defmodule LoPrice.Bot do
 
         product = find_or_create_product(product_url, sber_product["name"], retailer)
 
-        create_or_update_monitor(user.id, product.id, current_price, nil, message_id + 1)
+        %{id: monitor_id, target_price: target_price} = create_or_update_monitor(user.id, product.id, current_price, nil, message_id + 1)
 
-        answer(context, "Нужная цена? (Текущая: #{sber_product["offer"]["unit_price"]}₽)\nОтправьте пустое сообщение, чтобы отслеживать любое снижение цены от текущей.", reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
+        # ExGram.edit_message_reply_markup(
+        #   bot: @bot,
+        #   chat_id: chat_id,
+        #   message_id: message_id,
+        #   reply_markup: create_inline([[%{text: "✅ Цель", callback_data: "noop"}]])
+        # )
+
+
+        # answer(context, "Нужная цена? (Текущая: #{sber_product["offer"]["unit_price"]}₽)\nОтправьте пустое сообщение, чтобы отслеживать любое снижение цены от текущей.",
+        #  reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
+        answer(context, "<b>#{product.name}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
+          reply_markup: edit_monitor_buttons(monitor_id, target_price || current_price),
+          parse_mode: "HTML")
     end
   end
 
@@ -173,7 +186,8 @@ defmodule LoPrice.Bot do
     """
     )
   end
-    def handle(
+
+  def handle(
         {:callback_query,
          %{
            data: "remove_monitor_" <> monitor_id = _query_data,
@@ -189,6 +203,34 @@ defmodule LoPrice.Bot do
       text: "Удалён из отслеживания.")
 
     ExGram.delete_message(chat_id, message_id, bot: @bot)
+  end
+
+  def handle(
+        {:callback_query,
+         %{
+           data: "set_target_" <> monitor_id = _query_data,
+           id: query_id,
+           message: %{chat: %{id: chat_id}}
+         }} = q,
+         context) do
+    monitor_id = String.to_integer(monitor_id)
+
+    ExGram.answer_callback_query(query_id, bot: @bot)
+
+    monitor = Monitor.get(monitor_id)
+
+    msg = ExGram.send_message!(chat_id, "Нужная цена на <b>#{monitor.product.name}</b>@#{monitor.product.retailer}?", bot: @bot,
+      parse_mode: "HTML",
+      reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
+
+    from(
+      m in Monitor,
+      where: m.id == ^monitor_id,
+      update: [
+        set: [target_price_message_id: ^msg.message_id]
+      ]
+    )
+    |> Repo.update_all([])
   end
 
 
@@ -250,11 +292,14 @@ defmodule LoPrice.Bot do
 
     ExGram.send_photo(chat_id, image_url,
                       caption: caption, bot: @bot, parse_mode: "HTML",
-                      reply_markup: create_inline([[
-                        %{text: "Уточнить (#{Product.format_price(target_price)})", callback_data: "set_target_#{monitor_id}"},
-                        %{text: "Удалить", callback_data: "remove_monitor_#{monitor_id}"}
-                      ]]))
+                      reply_markup: edit_monitor_buttons(monitor_id, target_price))
   end
+
+  defp edit_monitor_buttons(monitor_id, target_price), do:
+    create_inline([[
+                    %{text: "Уточнить (#{Product.format_price(target_price)})", callback_data: "set_target_#{monitor_id}"},
+                    %{text: "Удалить", callback_data: "remove_monitor_#{monitor_id}"}
+                  ]])
 
   def list_products(telegram_user_id, context) do
     user = User.by_telegram_id(telegram_user_id)
@@ -275,6 +320,7 @@ defmodule LoPrice.Bot do
 
   @product_icons [
     {~w(чипсы),"🍟"},
+    {~w(паста спагетти макароны вермишель),"🍝"},
     {~w(сыр),"🧀"},
     {~w(форель рыба лосось стерлядь сёмга угорь тунец), "🐟"},
     {~w(стейк), "🥩"},
