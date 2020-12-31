@@ -10,11 +10,13 @@ defmodule LoPrice.Bot do
     name: @bot,
     setup_commands: true
 
-  command("start", description: "Show start info")
+  command("start", description: "Первоначальная настройка — выбор города.")
+  command("products", description: "Список отслеживаемых товаров.")
 
   regex(~r/^https:\/\/sbermarket.ru\/.*/iu, :sbermarket)
 
   def handle({:command, :start, _msg}, context), do: select_city(context)
+  def handle({:command, :products, %{from: %{id: user_id}} = _msg}, context), do: list_products(user_id, context)
 
   defp select_city(context, retailer \\ nil), do:
     answer(context, "В каком городе отслеживать цены?", reply_markup: cities_buttons(0, retailer))
@@ -208,5 +210,22 @@ defmodule LoPrice.Bot do
       "#{product_name}@#{store_name} — #{price}₽\n#{product_url}"
 
     ExGram.send_photo(chat_id, image_url, caption: caption)
+  end
+
+  def list_products(telegram_user_id, context) do
+    user = User.by_telegram_id(telegram_user_id)
+
+    products_list =
+    from(m in Monitor,
+    where: m.user_id == ^user.id,
+    left_join: product in assoc(m, :product),
+    preload: [:product])
+    |> Repo.all()
+    |> Enum.map(fn %{target_price: tprice, price_history: hprice, product: %{name: product_name}} ->
+      "#{product_name} — #{Product.format_price(List.last(hprice))} (Цель: #{Product.format_price(tprice)})"
+    end)
+    |> Enum.join("\n")
+
+    answer(context, products_list)
   end
 end

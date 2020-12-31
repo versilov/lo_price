@@ -30,4 +30,8 @@ defmodule LoPrice.Product do
     |> Repo.one()
 
   def to_kop(float), do: trunc(float*100)
+  def to_rub(integer), do: integer / 100.0
+
+  def format_price(nil), do: ""
+  def format_price(price_in_kops) when is_integer(price_in_kops), do: "#{to_rub(price_in_kops)}₽"
 end
