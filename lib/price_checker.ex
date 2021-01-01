@@ -16,28 +16,27 @@ defmodule LoPrice.PriceChecker do
 
         last_price = List.last(price_history)
 
-        store_ids
-        |> Enum.each(fn store_id ->
-          if sber_product = SberMarket.product(permalink, store_id) do
-            pi(sber_product["name"])
-            current_price = sber_product["offer"]["unit_price"] && Product.to_kop(sber_product["offer"]["unit_price"])
 
-            if sber_product["offer"]["active"] && current_price && current_price != last_price do
-              Monitor.update_price_history(monitor, current_price)
+        if sber_product = SberMarket.find_lowest_price_in_stores(permalink, store_ids) do
+          pi(sber_product["name"])
+          current_price = sber_product["offer"]["unit_price"] && Product.to_kop(sber_product["offer"]["unit_price"])
 
-              if current_price < target_price do
-                store = SberMarket.store(store_id)
-                image_url = hd(sber_product["images"])["original_url"]
-                unit = if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
+          if sber_product["offer"]["active"] && current_price && current_price != last_price do
+            Monitor.update_price_history(monitor, current_price)
 
-                Bot.notify_about_price_change(user.telegram_user_id, product.name, store["name"], last_price, target_price, current_price, unit, product.url, image_url, monitor_id)
-              end
+            if current_price < target_price do
+              store = SberMarket.store(sber_product["offer"]["store_id"])
+              image_url = hd(sber_product["images"])["original_url"]
+              unit = if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
+
+              Bot.notify_about_price_change(user.telegram_user_id, product.name, store["name"], last_price, target_price, current_price, unit, product.url, image_url, monitor_id)
             end
           end
-        end)
-      end, max_concurrency: 9)
+        end
+      end, max_concurrency: 3)
       |> Stream.run()
     end)
-
   end
+
+
 end

@@ -127,4 +127,10 @@ defmodule SberMarket do
       |> String.split("/", trim: true)
       |> List.to_tuple()
 
+
+  def find_lowest_price_in_stores(permalink, store_ids) when is_list(store_ids), do:
+    store_ids
+    |> Enum.map(&product(permalink, &1))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.min_by(& &1["offer"]["unit_price"], fn -> nil end)
 end
