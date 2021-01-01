@@ -11,11 +11,12 @@ defmodule LoPrice.Bot do
     setup_commands: true
 
   command("start", description: "Первоначальная настройка — выбор города.")
+  command("location", description: "Смена города в котором следим за ценами.")
   command("products", description: "Список отслеживаемых товаров.")
 
   regex(~r/^https:\/\/sbermarket.ru\/.*/iu, :sbermarket)
 
-  def handle({:command, :start, %{from: %{id: user_id}} = _msg}, context) do
+  def handle({:command, command, %{from: %{id: user_id}} = _msg}, context) when command in [:start, :location] do
     user = User.by_telegram_id(user_id)
     user_city = user && user.city
     select_city(context, nil, user_city)
