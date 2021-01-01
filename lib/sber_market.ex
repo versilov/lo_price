@@ -9,7 +9,7 @@ defmodule SberMarket do
 
   @impl HTTPoison.Base
   def process_request_options(opts),
-    do: [
+    do: opts ++ [
       hackney: [
         ssl_options: [versions: [:"tlsv1.2"]]
       ]
@@ -28,7 +28,7 @@ defmodule SberMarket do
   def product(permalink, store_id \\ "105") do
     get!("stores/#{store_id}/products/#{permalink}").body["product"]
   rescue
-    e ->
+    _ ->
       nil
   end
 
@@ -47,7 +47,7 @@ defmodule SberMarket do
     stores_cache()
     |> filter_stores(retailer, city)
   rescue
-    e ->
+    _ ->
       nil
   end
 
@@ -75,7 +75,7 @@ defmodule SberMarket do
       |> Enum.reject(&(&1 == ""))
       |> Enum.frequencies()
       |> Enum.sort(fn {_city1, count1}, {_city2, count2} -> count1 >= count2 end)
-      |> Enum.map(fn {city, count} -> city end)
+      |> Enum.map(fn {city, _count} -> city end)
 
   defp filter_stores(stores, retailer, city), do:
     stores

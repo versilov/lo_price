@@ -101,7 +101,7 @@ defmodule LoPrice.MonitorServer do
         image_url = hd(fresh_product["images"])["original_url"]
         product_url = "https://sbermarket.ru/#{retailer}/#{permalink}"
 
-        Bot.notify_about_price_change(@telegram_chat_id, fresh_product["name"], store_name, product["offer"]["unit_price"], fresh_product["offer"]["unit_price"], product_url, image_url)
+        Bot.notify_about_price_change(@telegram_chat_id, fresh_product["name"], store_name, product["offer"]["unit_price"], @acceptable_price_per_kg, fresh_product["offer"]["unit_price"], product_url, image_url)
 
         product
       end
