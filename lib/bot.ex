@@ -61,43 +61,10 @@ defmodule LoPrice.Bot do
   end
 
   def handle(
-        {:regex, :sbermarket, %{message_id: message_id, text: product_url, chat: %{id: _chat_id}, from: %{id: user_id}} = _msg},
+        {:regex, :sbermarket, %{text: product_url, chat: %{id: _chat_id}, from: %{id: telegram_user_id}} = _msg},
         context
-      ) do
-
-    {retailer, permalink} = SberMarket.parse_product_url(product_url)
-
-    case User.by_telegram_id(user_id) do
-      nil ->
-        select_city(context, retailer)
-
-      user ->
-        # Get the first retailer store in the users location
-        store_id = SberMarket.stores(retailer, user.city) |> SberMarket.ids() |> hd()
-
-        sber_product = SberMarket.product(permalink, store_id)
-
-        current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
-
-        product = find_or_create_product(product_url, sber_product["name"], retailer)
-
-        %{id: monitor_id, target_price: target_price} = create_or_update_monitor(user.id, product.id, current_price, nil, message_id + 1)
-
-        # ExGram.edit_message_reply_markup(
-        #   bot: @bot,
-        #   chat_id: chat_id,
-        #   message_id: message_id,
-        #   reply_markup: create_inline([[%{text: "✅ Цель", callback_data: "noop"}]])
-        # )
-
-
-        # answer(context, "Нужная цена? (Текущая: #{sber_product["offer"]["unit_price"]}₽)\nОтправьте пустое сообщение, чтобы отслеживать любое снижение цены от текущей.",
-        #  reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
-        answer(context, "<b>#{product.name}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
-          reply_markup: edit_monitor_buttons(monitor_id, target_price || current_price),
-          parse_mode: "HTML")
-    end
-  end
+      ), do:
+    add_product_monitor(product_url, telegram_user_id, context)
 
   def handle({:callback_query, %{id: query_id, data: "page_" <> page, message: %{chat: %{id: chat_id}, message_id: message_id}}}, _context) do
     ExGram.answer_callback_query(query_id, bot: @bot)
@@ -212,25 +179,62 @@ defmodule LoPrice.Bot do
   end
 
   def handle({:inline_query, %{query: query} = inline_msg}, context) do
-    pi(inline_msg)
-
     suggestions =
       SberMarket.search_suggestions(105, query)
       |> Enum.map(&sber_suggestion_to_inline/1)
 
-    answer_inline_query(context, suggestions)
+    answer_inline_query(context, suggestions, is_personal: true, cache_time: 0)
   end
 
-  defp sber_suggestion_to_inline(%{"product" => %{
-    "permalink" => permalink, "name" => product_name, "id" => product_id,
-    "images" => [%{"original_url" => original_url, "mini_url" => mini_url} | _]
+  def handle({:message, %{caption: caption, caption_entities: entities, chat: %{id: telegram_user_id}}}, context) do
+    add_product_monitor(product_url(caption, entities), telegram_user_id, context)
+  end
+
+  defp product_url(_caption, []), do: nil
+  defp product_url(caption, [%{type: "url", offset: offset, length: length} | _]), do:
+    String.slice(caption, offset, length)
+
+  defp product_url(caption, [_ | entities]), do: product_url(caption, entities)
+
+
+  defp add_product_monitor(product_url, telegram_user_id, context) do
+    {retailer, permalink} = SberMarket.parse_product_url(product_url)
+
+    case User.by_telegram_id(telegram_user_id) do
+      nil ->
+        select_city(context, retailer)
+
+      user ->
+        # Get the first retailer store in the users location
+        store_id = SberMarket.stores(retailer, user.city) |> SberMarket.ids() |> hd()
+
+        sber_product = SberMarket.product(permalink, store_id)
+
+        current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
+
+        product = find_or_create_product(product_url, sber_product["name"], retailer)
+
+        %{id: monitor_id, target_price: target_price} = create_or_update_monitor(user.id, product.id, current_price)
+
+        answer(context, "<b>#{product.name}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
+          reply_markup: edit_monitor_buttons(monitor_id, target_price || current_price),
+          parse_mode: "HTML")
+    end
+  end
+
+  defp sber_suggestion_to_inline(%{"price" => price, "product" => %{
+    "permalink" => permalink, "name" => product_name, "sku" => sku,
+    "images" => [%{"original_url" => original_url, "small_url" => mini_url} | _]
     }}), do:
-    %InlineQueryResultPhoto{id: product_id, type: "photo",
+    %InlineQueryResultPhoto{id: sku, type: "photo",
       photo_url: original_url,
+      photo_width: 100,
+      photo_height: 100,
       thumb_url: mini_url,
-      caption: product_name,
+      caption: "#{product_name} — <b>#{Product.format_price(price)}</b>\nhttps://sbermarket.ru/metro/#{permalink}",
       title: product_name,
-      # parse_mode: "HTML"
+      description: product_name,
+      parse_mode: "HTML"
     }
 
 
@@ -293,7 +297,7 @@ defmodule LoPrice.Bot do
     end
   end
 
-  defp create_or_update_monitor(user_id, product_id, current_price, target_price, target_price_message_id) do
+  defp create_or_update_monitor(user_id, product_id, current_price, target_price \\ nil, target_price_message_id \\ nil) do
     case Monitor.by_user_and_product(user_id, product_id) do
       nil ->
         %Monitor{user_id: user_id, product_id: product_id,
