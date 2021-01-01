@@ -122,10 +122,10 @@ defmodule LoPrice.Bot do
              id: telegeram_user_id,
              first_name: first_name,
              last_name: last_name
-           } = from,
+           } = _from,
            message: %{chat: %{id: chat_id}, message_id: message_id}
          }},
-        context
+        _context
       ) do
     ExGram.answer_callback_query(query_id,
       bot: @bot,
@@ -154,7 +154,7 @@ defmodule LoPrice.Bot do
       bot: @bot)
 
     # Force price check in the new city for this user
-    PriceChecker.check_prices(user_id)
+    PriceChecker.check_prices(user_id, true)
   end
 
   def handle(
@@ -291,14 +291,34 @@ defmodule LoPrice.Bot do
   defp maybe_add_target_price(attrs, nil), do: attrs
   defp maybe_add_target_price(attrs, target_price) when is_integer(target_price), do: Map.put(attrs, :target_price, target_price)
 
-  def notify_about_price_change(chat_id, product_name, store_name, old_price, target_price, price, unit \\ nil, product_url, image_url, monitor_id \\ nil) do
-    caption =
-      "#{product_name}@#{store_name} — <s>#{Product.format_price(old_price)}</s>→<b>#{Product.format_price(price)}</b>#{unit && "/" <> unit || ""}\n#{product_url}"
-
+  def notify_about_price_change(chat_id, product_name, store_name, old_price, target_price, price, unit \\ nil, product_url, image_url, monitor_id \\ nil), do:
     ExGram.send_photo(chat_id, image_url,
-                      caption: caption, bot: @bot, parse_mode: "HTML",
+                      caption: price_change_caption(product_name, store_name, old_price, price, unit, product_url),
+                      bot: @bot, parse_mode: "HTML",
                       reply_markup: edit_monitor_buttons(monitor_id, target_price))
-  end
+
+  def notify_about_price_change_with_group(telegram_user_id, price_changes), do:
+    price_changes
+    |> Enum.chunk_every(10)
+    |> Enum.each(&send_price_changes_group(telegram_user_id, &1))
+
+  defp send_price_changes_group(telegram_user_id, changes) when is_list(changes), do:
+    ExGram.send_media_group!(telegram_user_id, media_group_from_changes(changes), bot: @bot)
+
+  defp media_group_from_changes(changes), do:
+    Enum.map(changes, fn %{product_name: product_name, store_name: store_name,
+                  last_price: last_price, current_price: current_price,
+                  unit: unit, product_url: product_url, image_url: image_url} ->
+      %ExGram.Model.InputMediaPhoto{
+        media: image_url,
+        type: "photo",
+        caption: price_change_caption(product_name, store_name, last_price, current_price, unit, product_url),
+        parse_mode: "HTML"
+      }
+    end)
+
+  defp price_change_caption(product_name, store_name, old_price, price, unit, product_url), do:
+    "#{product_name}@#{store_name} — <s>#{Product.format_price(old_price)}</s>→<b>#{Product.format_price(price)}</b>#{unit && "/" <> unit || ""}\n#{product_url}"
 
   defp edit_monitor_buttons(nil, _), do: []
   defp edit_monitor_buttons(monitor_id, target_price), do:

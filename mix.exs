@@ -45,7 +45,7 @@ defmodule LoPrice.MixProject do
       {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
-      {:ex_gram, github: "rockneurotiko/ex_gram"},
+      {:ex_gram, github: "versilov/ex_gram"},
       {:fastglobal, "~> 1.0"},
       {:httpoison, "~> 1.7"},
       {:tesla, "~> 1.2"},
