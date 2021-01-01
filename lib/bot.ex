@@ -4,6 +4,7 @@ defmodule LoPrice.Bot do
   import Ecto.Query
 
   alias LoPrice.{Repo, User, Product, Monitor, PriceChecker}
+  alias ExGram.Model.{InputMediaPhoto, InlineQueryResultPhoto}
 
   @bot :lopricebot
   use ExGram.Bot,
@@ -209,6 +210,28 @@ defmodule LoPrice.Bot do
     pi({lat, lon})
     :no_answer
   end
+
+  def handle({:inline_query, %{query: query} = inline_msg}, context) do
+    pi(inline_msg)
+
+    suggestions =
+      SberMarket.search_suggestions(105, query)
+      |> Enum.map(&sber_suggestion_to_inline/1)
+
+    answer_inline_query(context, suggestions)
+  end
+
+  defp sber_suggestion_to_inline(%{"product" => %{
+    "permalink" => permalink, "name" => product_name, "id" => product_id,
+    "images" => [%{"original_url" => original_url, "mini_url" => mini_url} | _]
+    }}), do:
+    %InlineQueryResultPhoto{id: product_id, type: "photo",
+      photo_url: original_url,
+      thumb_url: mini_url,
+      caption: product_name,
+      title: product_name,
+      # parse_mode: "HTML"
+    }
 
 
   defp select_city(context, retailer, selected_city \\ nil), do:
