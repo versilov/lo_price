@@ -3,7 +3,7 @@ defmodule LoPrice.Bot do
 
   import Ecto.Query
 
-  alias LoPrice.{Repo, User, Product, Monitor}
+  alias LoPrice.{Repo, User, Product, Monitor, PriceChecker}
 
   @bot :lopricebot
   use ExGram.Bot,
@@ -118,7 +118,7 @@ defmodule LoPrice.Bot do
            chat_instance: _chat_instance,
            id: query_id,
            from: %{
-             id: user_id,
+             id: telegeram_user_id,
              first_name: first_name,
              last_name: last_name
            } = from,
@@ -126,9 +126,6 @@ defmodule LoPrice.Bot do
          }},
         context
       ) do
-    pi(city)
-    pi(from)
-
     ExGram.answer_callback_query(query_id,
       bot: @bot,
       text: "Ваш город: #{city}",
@@ -146,14 +143,17 @@ defmodule LoPrice.Bot do
     #   reply_markup: %{keyboard: [[%{text: "Location", request_location: true}]]}
     # )
 
-    create_or_update_user(user_id, city, "#{first_name} #{last_name}")
+    %{id: user_id} = create_or_update_user(telegeram_user_id, city, "#{first_name} #{last_name}")
 
-    answer(context,
-    """
-    Бот настроен. Присылайте боту ссылки на карточки товаров на sbermarket.ru, задавайте целевую цену и бот уведомит вас, когда цена снизится до нужного уровня.
-    Пример ссылки: https://sbermarket.ru/metro/foriel-okhlazhdiennaia-3-4
-    """
-    )
+    ExGram.send_message!(chat_id,
+        """
+        Бот настроен. Присылайте боту ссылки на карточки товаров на sbermarket.ru, задавайте целевую цену и бот уведомит вас, когда цена снизится до нужного уровня.
+        Пример ссылки: https://sbermarket.ru/metro/foriel-okhlazhdiennaia-3-4
+        """,
+      bot: @bot)
+
+    # Force price check in the new city for this user
+    PriceChecker.check_prices(user_id)
   end
 
   def handle(
@@ -188,7 +188,8 @@ defmodule LoPrice.Bot do
 
     monitor = Monitor.get(monitor_id)
 
-    msg = ExGram.send_message!(chat_id, "Нужная цена на <b>#{monitor.product.name}</b>@#{monitor.product.retailer}?", bot: @bot,
+    msg = ExGram.send_message!(chat_id, "Нужная цена на <b>#{monitor.product.name}</b>@#{monitor.product.retailer}?",
+      bot: @bot,
       parse_mode: "HTML",
       reply_markup: %ExGram.Model.ForceReply{force_reply: true, selective: true})
 
@@ -247,12 +248,12 @@ defmodule LoPrice.Bot do
       nil ->
         %User{}
         |> User.changeset(%{city: city, name: name, telegram_user_id: telegram_user_id})
-        |> Repo.insert()
+        |> Repo.insert!()
 
       user ->
         user
         |> User.changeset(%{city: city, name: name})
-        |> Repo.update()
+        |> Repo.update!()
     end
   end
 

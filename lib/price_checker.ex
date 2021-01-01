@@ -1,12 +1,11 @@
 defmodule LoPrice.PriceChecker do
   use PI
   alias LoPrice.{Repo, Monitor, Product, User, Bot}
+  import Ecto.Query
 
-  def check_prices do
-    stream = Repo.stream(Monitor)
-
+  def check_prices(user_id \\ nil) do
     Repo.transaction(fn ->
-      stream
+      stream(user_id)
       |> Task.async_stream(fn %{id: monitor_id, product_id: product_id, user_id: user_id, target_price: target_price, price_history: price_history} = monitor ->
         product = Product.by_id(product_id)
         user = User.by_id(user_id)
@@ -38,5 +37,7 @@ defmodule LoPrice.PriceChecker do
     end)
   end
 
-
+  defp stream(nil), do: Repo.stream(Monitor)
+  defp stream(user_id) when is_integer(user_id), do:
+    Repo.stream(from(m in Monitor, where: m.user_id == ^user_id))
 end
