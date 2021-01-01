@@ -180,8 +180,8 @@ defmodule LoPrice.Bot do
 
   def handle({:inline_query, %{query: query} = inline_msg}, context) do
     suggestions =
-      SberMarket.search_suggestions(105, query)
-      |> Enum.map(&sber_suggestion_to_inline/1)
+      SberMarket.search(105, query)
+      |> Enum.map(&sber_product_to_inline/1)
 
     answer_inline_query(context, suggestions, is_personal: true, cache_time: 0)
   end
@@ -232,6 +232,21 @@ defmodule LoPrice.Bot do
       photo_height: 100,
       thumb_url: mini_url,
       caption: "#{product_name} — <b>#{Product.format_price(price)}</b>\nhttps://sbermarket.ru/metro/#{permalink}",
+      title: product_name,
+      description: product_name,
+      parse_mode: "HTML"
+    }
+
+  defp sber_product_to_inline(%{"price" => price,
+    "name" => product_name, "sku" => sku,
+    "images" => [%{"original_url" => original_url, "small_url" => mini_url} | _]
+    }), do:
+    %InlineQueryResultPhoto{id: sku, type: "photo",
+      photo_url: original_url,
+      photo_width: 100,
+      photo_height: 100,
+      thumb_url: mini_url,
+      caption: "#{product_name} — <b>#{Product.format_price(price)}</b>\nhttps://sbermarket.ru/metro/#{sku}",
       title: product_name,
       description: product_name,
       parse_mode: "HTML"
