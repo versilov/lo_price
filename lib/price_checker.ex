@@ -17,7 +17,6 @@ defmodule LoPrice.PriceChecker do
 
 
         if sber_product = SberMarket.find_lowest_price_in_stores(permalink, store_ids) do
-          pi(sber_product["name"])
           current_price = sber_product["offer"]["unit_price"] && Product.to_kop(sber_product["offer"]["unit_price"])
 
           if sber_product["offer"]["active"] && current_price && current_price != last_price do
