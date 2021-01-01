@@ -43,7 +43,7 @@ defmodule SberMarket do
           )
       )
   def search(store_id, query) do
-    get!("v2/products?sid=#{store_id}per_page=50&q=#{query}").body["products"] || []
+    get!("v2/products?sid=#{store_id}per_page=24&q=#{query}").body["products"] || []
   rescue
     _ ->
       []
