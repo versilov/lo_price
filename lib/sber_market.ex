@@ -11,6 +11,7 @@ defmodule SberMarket do
   def process_request_options(opts),
     do: opts ++ [
       hackney: [
+        pool: :sbermarket,
         ssl_options: [versions: [:"tlsv1.2"]]
       ]
     ]
@@ -41,6 +42,13 @@ defmodule SberMarket do
             _ -> nil
           )
       )
+
+  def search_suggestions(store_id, query) do
+    get!("stores/#{store_id}/search_suggestions?q=#{query}").body["suggestion"]["offers"] || []
+  rescue
+    _ ->
+      []
+  end
 
   # Retailer can be: metro, lenta, alleya
   def stores(retailer \\ nil, city \\ nil) do
