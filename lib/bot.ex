@@ -183,7 +183,7 @@ defmodule LoPrice.Bot do
       SberMarket.search(105, query)
       |> Enum.map(&sber_product_to_inline/1)
 
-    answer_inline_query(context, suggestions, is_personal: true, cache_time: 0)
+    answer_inline_query(context, suggestions, is_personal: true)
   end
 
   def handle({:message, %{caption: caption, caption_entities: entities, chat: %{id: telegram_user_id}}}, context) do
