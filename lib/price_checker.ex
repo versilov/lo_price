@@ -11,7 +11,7 @@ defmodule LoPrice.PriceChecker do
         user = User.by_id(user_id)
 
         {retailer, permalink} = SberMarket.parse_product_url(product.url)
-        store_ids = SberMarket.stores(retailer, user.city) |> SberMarket.ids() |> pi()
+        store_ids = SberMarket.stores(retailer, user.city) |> SberMarket.ids()
 
         last_price = List.last(price_history)
 

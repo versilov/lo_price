@@ -42,8 +42,8 @@ defmodule SberMarket do
             _ -> nil
           )
       )
-  def search(store_id, query) do
-    get!("v2/products?sid=#{store_id}per_page=24&q=#{query}").body["products"] || []
+  def search(store_id, query, page \\ 1, per_page \\ 24) do
+    get!("v2/products?sid=#{store_id}per_page=#{per_page}&page=#{page}&q=#{query}").body["products"] || []
   rescue
     _ ->
       []

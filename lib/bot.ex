@@ -178,12 +178,19 @@ defmodule LoPrice.Bot do
     :no_answer
   end
 
-  def handle({:inline_query, %{query: query} = inline_msg}, context) do
+  def handle({:inline_query, %{query: query, offset: offset} = inline_msg}, context) do
+
+    page = case offset do
+      "" -> 1
+      num -> String.to_integer(num)
+    end
+
     suggestions =
-      SberMarket.search(105, query)
+      SberMarket.search(105, query, page)
+      |> Enum.reject(& &1["images"] == [])
       |> Enum.map(&sber_product_to_inline/1)
 
-    answer_inline_query(context, suggestions, is_personal: true)
+    answer_inline_query(context, suggestions, is_personal: true, next_offset: "#{page+1}")
   end
 
   def handle({:message, %{caption: caption, caption_entities: entities, chat: %{id: telegram_user_id}}}, context) do
