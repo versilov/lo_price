@@ -262,13 +262,13 @@ defmodule LoPrice.Bot do
     |> Enum.map(&maybe_add_monitor(&1, user_id))
 
   defp maybe_add_monitor(%{"product" => %{"name" => name, "permalink" => permalink, "offer" => %{
-    "price" => price,
+    "unit_price" => unit_price,
     "store_id" => store_id
     }}}, user_id) do
     retailer = SberMarket.store(store_id)["retailer_slug"]
 
     create_or_update_product_and_monitor("https://sbermarket.ru/#{retailer}/#{permalink}",
-    name, retailer, user_id, Product.to_kop(price))
+    name, retailer, user_id, Product.to_kop(unit_price))
   end
 
   defp maybe_add_monitor(_, _user_id), do: :nothing
