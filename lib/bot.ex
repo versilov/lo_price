@@ -4,7 +4,7 @@ defmodule LoPrice.Bot do
   import Ecto.Query
 
   alias LoPrice.{Repo, User, Product, Monitor, PriceChecker}
-  alias ExGram.Model.{InputMediaPhoto, InlineQueryResultPhoto}
+  alias ExGram.Model.{InputMediaPhoto, InlineQueryResultPhoto, InlineQueryResultArticle, InputTextMessageContent}
 
   @bot :lopricebot
   use ExGram.Bot,
@@ -186,7 +186,7 @@ defmodule LoPrice.Bot do
     end
 
     suggestions =
-      SberMarket.search(105, query, page)
+      SberMarket.search(105, query, page, 7)
       |> Enum.reject(& &1["images"] == [])
       |> Enum.map(&sber_product_to_inline/1)
 
@@ -205,7 +205,7 @@ defmodule LoPrice.Bot do
 
 
   defp add_product_monitor(product_url, telegram_user_id, context) do
-    {retailer, permalink} = SberMarket.parse_product_url(product_url)
+    {retailer, permalink} = SberMarket.parse_product_url(product_url) |> pi()
 
     case User.by_telegram_id(telegram_user_id) do
       nil ->
@@ -213,19 +213,29 @@ defmodule LoPrice.Bot do
 
       user ->
         # Get the first retailer store in the users location
-        store_id = SberMarket.stores(retailer, user.city) |> SberMarket.ids() |> hd()
+        pi(user)
+        case SberMarket.stores(retailer, user.city) do
+          [] ->
+            answer(context, "В вашем городе #{user.city} не обнаружено магазинов #{retailer}. Отследить товар не получится.")
 
-        sber_product = SberMarket.product(permalink, store_id)
+          stores ->
+            store_id =
+              stores
+              |> SberMarket.ids()
+              |> hd()
 
-        current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
+            sber_product = SberMarket.product(permalink, store_id)
 
-        product = find_or_create_product(product_url, sber_product["name"], retailer)
+            current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
 
-        %{id: monitor_id, target_price: target_price} = create_or_update_monitor(user.id, product.id, current_price)
+            product = find_or_create_product(product_url, sber_product["name"], retailer)
 
-        answer(context, "<b>#{product.name}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
-          reply_markup: edit_monitor_buttons(monitor_id, target_price || current_price),
-          parse_mode: "HTML")
+            %{id: monitor_id, target_price: target_price} = create_or_update_monitor(user.id, product.id, current_price)
+
+            answer(context, "<b>#{product.name}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
+              reply_markup: edit_monitor_buttons(monitor_id, target_price || current_price),
+              parse_mode: "HTML")
+      end
     end
   end
 
@@ -248,16 +258,28 @@ defmodule LoPrice.Bot do
     "name" => product_name, "sku" => sku,
     "images" => [%{"original_url" => original_url, "small_url" => mini_url} | _]
     }), do:
-    %InlineQueryResultPhoto{id: sku, type: "photo",
-      photo_url: original_url,
-      photo_width: 100,
-      photo_height: 100,
+    %InlineQueryResultArticle{id: sku, type: "article",
       thumb_url: mini_url,
-      caption: "#{product_name} — <b>#{Product.format_price(price)}</b>\nhttps://sbermarket.ru/metro/#{sku}",
+      thumb_width: 150,
+      thumb_height: 150,
       title: product_name,
-      description: product_name,
-      parse_mode: "HTML"
+      description:  Product.format_price(price),
+      input_message_content: %InputTextMessageContent{
+        message_text: "https://sbermarket.ru/metro/#{sku}",
+        parse_mode: "HTML"
+      }
     }
+
+    # %InlineQueryResultPhoto{id: sku, type: "photo",
+    #   photo_url: original_url,
+    #   photo_width: 100,
+    #   photo_height: 100,
+    #   thumb_url: mini_url,
+    #   caption: "#{product_name} — <b>#{Product.format_price(price)}</b>\nhttps://sbermarket.ru/metro/#{sku}",
+    #   title: product_name,
+    #   description: product_name,
+    #   parse_mode: "HTML"
+    # }
 
 
   defp select_city(context, retailer, selected_city \\ nil), do:
