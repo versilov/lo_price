@@ -14,6 +14,7 @@ defmodule LoPrice.Bot do
   command("start", description: "Первоначальная настройка — выбор города.")
   command("location", description: "Смена города в котором следим за ценами.")
   command("products", description: "Список отслеживаемых товаров.")
+  command("login", description: "Введите логин и пароль от СберМаркета, чтобы загрузить любимые товары.")
 
   regex(~r/^https:\/\/sbermarket.ru\/.*/iu, :sbermarket)
 
@@ -22,7 +23,17 @@ defmodule LoPrice.Bot do
     user_city = user && user.city
     select_city(context, nil, user_city)
   end
+
   def handle({:command, :products, %{from: %{id: user_id}} = _msg}, context), do: list_products(user_id, context)
+
+  def handle({:command, :login, %{from: %{id: telegram_user_id}, text: params}}, context) do
+    [login, password] = String.split(params)
+    sbermarket_auth = Base.encode64("#{login}:#{password}")
+
+    %{id: user_id} = create_or_update_user(telegram_user_id, %{extra: %{sbermarket_auth: sbermarket_auth}})
+
+    add_monitors_from_sbermaket_favorites(user_id, sbermarket_auth)
+  end
 
 
   def handle(
@@ -112,7 +123,7 @@ defmodule LoPrice.Bot do
     #   reply_markup: %{keyboard: [[%{text: "Location", request_location: true}]]}
     # )
 
-    %{id: user_id} = create_or_update_user(telegeram_user_id, city, "#{first_name} #{last_name}")
+    %{id: user_id} = create_or_update_user(telegeram_user_id, %{city: city, name: "#{first_name} #{last_name}"})
 
     ExGram.send_message!(chat_id,
         """
@@ -239,6 +250,10 @@ defmodule LoPrice.Bot do
     end
   end
 
+  defp add_monitors_from_sbermaket_favorites(sber_auth, user_id) do
+
+  end
+
   defp sber_suggestion_to_inline(%{"price" => price, "product" => %{
     "permalink" => permalink, "name" => product_name, "sku" => sku,
     "images" => [%{"original_url" => original_url, "small_url" => mini_url} | _]
@@ -265,7 +280,7 @@ defmodule LoPrice.Bot do
       title: product_name,
       description:  Product.format_price(price),
       input_message_content: %InputTextMessageContent{
-        message_text: "https://sbermarket.ru/metro/#{sku}",
+        message_text: "<b>#{product_name}</b>\n#{Product.format_price(price)}\nhttps://sbermarket.ru/metro/#{sku}",
         parse_mode: "HTML"
       }
     }
@@ -315,16 +330,16 @@ defmodule LoPrice.Bot do
   defp next_button(page, _last_page), do: [[%{text: "▼ Дальше ▼", callback_data: "page_#{page+1}"}]]
 
 
-  defp create_or_update_user(telegram_user_id, city, name) do
+  defp create_or_update_user(telegram_user_id, attrs) do
     case User.by_telegram_id(telegram_user_id) do
       nil ->
         %User{}
-        |> User.changeset(%{city: city, name: name, telegram_user_id: telegram_user_id})
+        |> User.changeset(Map.merge(attrs, %{telegram_user_id: telegram_user_id}))
         |> Repo.insert!()
 
       user ->
         user
-        |> User.changeset(%{city: city, name: name})
+        |> User.changeset(attrs)
         |> Repo.update!()
     end
   end

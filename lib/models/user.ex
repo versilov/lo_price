@@ -8,6 +8,7 @@ defmodule LoPrice.User do
     field :city, :string
     field :name, :string
     field :telegram_user_id, :integer
+    field :extra, :map, default: %{}
 
     timestamps()
   end
@@ -15,7 +16,7 @@ defmodule LoPrice.User do
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:telegram_user_id, :name, :city])
+    |> cast(attrs, [:telegram_user_id, :name, :city, :extra])
     |> validate_required([:telegram_user_id, :name, :city])
     |> unique_constraint(:telegram_user_id)
   end

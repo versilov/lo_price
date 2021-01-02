@@ -17,6 +17,15 @@ defmodule SberMarket do
     ]
 
   @impl HTTPoison.Base
+  def process_request_headers(headers), do:
+    headers ++ [Connection: "keep-alive"]
+
+  @impl HTTPoison.Base
+  def process_request_body(""), do: ""
+  def process_request_body(body), do:
+    Jason.encode!(body) |> pi()
+
+  @impl HTTPoison.Base
   def process_response_body(body) do
     Jason.decode!(body)
   rescue
@@ -24,6 +33,12 @@ defmodule SberMarket do
       msg = "Cannot decode MetroCC JSON: " <> e.data
 
       {:error, msg}
+  end
+
+  def login(email, password) do
+    post!("user_sessions",
+      %{user: %{email: email, password: password}},
+      ["Content-Type": "application/json"]).body["csrf_token"]
   end
 
   def product(permalink, store_id \\ "105") do
@@ -42,6 +57,11 @@ defmodule SberMarket do
             _ -> nil
           )
       )
+
+  def favorites(auth_token) do
+    get!("favorites_list/items", ["authority": "sbermarket.ru", "authenticitytoken": auth_token]).body
+  end
+
   def search(store_id, query, page \\ 1, per_page \\ 24) do
     get!("v2/products?sid=#{store_id}&per_page=#{per_page}&page=#{page}&q=#{query}").body["products"] || []
   rescue
