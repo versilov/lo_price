@@ -30,4 +30,12 @@ defmodule LoPrice.User do
     User
     |> where(id: ^user_id)
     |> Repo.one()
+
+  def encode_credentials(login, password), do: Base.encode64("#{login}:#{password}")
+  def decode_credentials(credentials),
+    do:
+      credentials
+      |> Base.decode64!()
+      |> String.split(":")
+      |> List.to_tuple()
 end

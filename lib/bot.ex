@@ -27,12 +27,12 @@ defmodule LoPrice.Bot do
   def handle({:command, :products, %{from: %{id: user_id}} = _msg}, context), do: list_products(user_id, context)
 
   def handle({:command, :login, %{from: %{id: telegram_user_id}, text: params}}, context) do
-    [login, password] = String.split(params)
-    sbermarket_auth = Base.encode64("#{login}:#{password}")
+    [email, password] = String.split(params)
+    sbermarket_auth = User.encode_credentials(email, password)
 
     %{id: user_id} = create_or_update_user(telegram_user_id, %{extra: %{sbermarket_auth: sbermarket_auth}})
 
-    add_monitors_from_sbermaket_favorites(user_id, sbermarket_auth)
+    add_monitors_from_sbermarket_favorites(email, password, user_id)
   end
 
 
@@ -239,20 +239,37 @@ defmodule LoPrice.Bot do
 
             current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
 
-            product = find_or_create_product(product_url, sber_product["name"], retailer)
+            %{id: monitor_id, target_price: target_price} = create_or_update_product_and_monitor(
+              product_url, sber_product["name"], retailer, user.id, current_price)
 
-            %{id: monitor_id, target_price: target_price} = create_or_update_monitor(user.id, product.id, current_price)
-
-            answer(context, "<b>#{product.name}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
+            answer(context, "<b>#{sber_product["name"]}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
               reply_markup: edit_monitor_buttons(monitor_id, target_price || current_price),
               parse_mode: "HTML")
       end
     end
   end
 
-  defp add_monitors_from_sbermaket_favorites(sber_auth, user_id) do
-
+  defp create_or_update_product_and_monitor(product_url, product_name, retailer, user_id, price) do
+    product = find_or_create_product(product_url, product_name, retailer)
+    create_or_update_monitor(user_id, product.id, price)
   end
+
+  def add_monitors_from_sbermarket_favorites(email, password, user_id), do:
+    SberMarket.login(email, password)
+    |> SberMarket.favorites()
+    |> Enum.map(&maybe_add_monitor(&1, user_id))
+
+  defp maybe_add_monitor(%{"product" => %{"name" => name, "permalink" => permalink, "offer" => %{
+    "price" => price,
+    "store_id" => store_id
+    }}}, user_id) do
+    retailer = SberMarket.store(store_id)["retailer_slug"]
+
+    create_or_update_product_and_monitor("https://sbermarket.ru/#{retailer}/#{permalink}",
+    name, retailer, user_id, Product.to_kop(price))
+  end
+
+  defp maybe_add_monitor(_, _user_id), do: :nothing
 
   defp sber_suggestion_to_inline(%{"price" => price, "product" => %{
     "permalink" => permalink, "name" => product_name, "sku" => sku,
