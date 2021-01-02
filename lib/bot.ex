@@ -435,18 +435,22 @@ defmodule LoPrice.Bot do
   def list_products(telegram_user_id, context) do
     user = User.by_telegram_id(telegram_user_id)
 
-    products_list =
     from(m in Monitor,
     where: m.user_id == ^user.id,
     left_join: product in assoc(m, :product),
     preload: [:product])
     |> Repo.all()
-    |> Enum.map(fn %{id: _monitor_id, target_price: tprice, price_history: hprice, product: %{name: product_name, url: product_url, retailer: retailer}} ->
-      "#{product_icon(product_name)}<a href=\"#{product_url}\">#{product_name}</a>@#{retailer} #{Product.format_price(List.last(hprice))}→<i>#{Product.format_price(tprice)}</i>"
-    end)
-    |> Enum.join("\n")
+    |> Enum.chunk_every(20)
+    |> Enum.each(fn chunk ->
+      products_list =
+        chunk
+        |> Enum.map(fn %{id: _monitor_id, target_price: tprice, price_history: hprice, product: %{name: product_name, url: product_url, retailer: retailer}} ->
+          "#{product_icon(product_name)}<a href=\"#{product_url}\">#{product_name}</a>@#{retailer} #{Product.format_price(List.last(hprice))}→<i>#{Product.format_price(tprice)}</i>"
+        end)
+        |> Enum.join("\n")
 
-    answer(context, products_list, parse_mode: "HTML", disable_web_page_preview: true)
+      ExGram.send_message(telegram_user_id, products_list, bot: @bot, parse_mode: "HTML", disable_web_page_preview: true)
+    end)
   end
 
   @product_icons [
