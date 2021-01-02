@@ -23,7 +23,7 @@ defmodule SberMarket do
   @impl HTTPoison.Base
   def process_request_body(""), do: ""
   def process_request_body(body), do:
-    Jason.encode!(body) |> pi()
+    Jason.encode!(body)
 
   @impl HTTPoison.Base
   def process_response_body(body) do
@@ -36,10 +36,23 @@ defmodule SberMarket do
   end
 
   def login(email, password) do
-    post!("user_sessions",
+    %{body: %{"csrf_token" => token}, headers: headers} =post!("user_sessions",
       %{user: %{email: email, password: password}},
-      ["Content-Type": "application/json"]).body["csrf_token"]
+      ["Content-Type": "application/json"])
+
+    [AuthenticityToken: token, Cookie: get_cookie(headers, "remember_user_token")]
+  rescue
+    _ ->
+      []
   end
+
+  defp get_cookie(headers, name), do:
+    headers
+    |> Enum.find(fn
+      {key, value} -> String.match?(key, ~r/\Aset-cookie\z/i) && String.match?(value, ~r/\A#{name}=/i)
+    end)
+    |> elem(1)
+
 
   def product(permalink, store_id \\ "105") do
     get!("stores/#{store_id}/products/#{permalink}").body["product"]
@@ -58,9 +71,8 @@ defmodule SberMarket do
           )
       )
 
-  def favorites(auth_token) do
-    get!("favorites_list/items", ["authority": "sbermarket.ru", "authenticitytoken": auth_token]).body
-  end
+  def favorites(auth_headers), do:
+    get!("favorites_list/items?per_page=1000", auth_headers).body["items"]
 
   def search(store_id, query, page \\ 1, per_page \\ 24) do
     get!("v2/products?sid=#{store_id}&per_page=#{per_page}&page=#{page}&q=#{query}").body["products"] || []

@@ -38,7 +38,7 @@ defmodule LoPrice.PriceChecker do
             end
           end
         end
-      end, max_concurrency: 9)
+      end, max_concurrency: 9, timeout: 63_000)
       |> Enum.to_list()
     end)
     |> maybe_send_notifications_groups(group_notifications)

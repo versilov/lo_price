@@ -54,6 +54,7 @@ defmodule LoPrice.MonitorServer do
       |> Map.new()
 
     send(self(), :monitor)
+    send(self(), :monitor_sbermarket_favorites)
     send(self(), :monitor_predefined)
 
     {:ok, {products, stores}}
@@ -75,6 +76,14 @@ defmodule LoPrice.MonitorServer do
     PriceChecker.check_prices()
 
     Process.send_after(self(), :monitor, 3500 * 1_000)
+
+    {:noreply, state}
+  end
+
+  def handle_info(:monitor_sbermarket_favorites, state) do
+    SberMarket.FavoritesMonitor.monitor()
+
+    Process.send_after(self(), :monitor_sbermarket_favorites, 2500 * 1_000)
 
     {:noreply, state}
   end
