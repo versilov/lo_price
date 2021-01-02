@@ -43,7 +43,7 @@ defmodule SberMarket do
           )
       )
   def search(store_id, query, page \\ 1, per_page \\ 24) do
-    get!("v2/products?sid=#{store_id}per_page=#{per_page}&page=#{page}&q=#{query}").body["products"] || []
+    get!("v2/products?sid=#{store_id}&per_page=#{per_page}&page=#{page}&q=#{query}").body["products"] || []
   rescue
     _ ->
       []
@@ -51,6 +51,15 @@ defmodule SberMarket do
 
   def search_suggestions(store_id, query) do
     get!("stores/#{store_id}/search_suggestions?q=#{query}").body["suggestion"]["offers"] || []
+  rescue
+    _ ->
+      []
+  end
+
+  # Returns closest stores, one of each brand.
+  # E.g. for Samara returns one Metro, one Auchan, one Lenta and one Beethoven.
+  def stores(%{latitude: lat, longitude: lon}) do
+    get!("v2/stores?lon=#{lon}&lat=#{lat}").body["stores"]
   rescue
     _ ->
       []
