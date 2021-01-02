@@ -6,6 +6,7 @@ defmodule LoPrice.Repo.Migrations.CreateUsers do
       add :telegram_user_id, :bigint, null: false
       add :name, :string, null: false
       add :city, :string, null: false
+      add :extra, :map, null: false, default: fragment("'{}'::jsonb")
 
       timestamps()
     end
