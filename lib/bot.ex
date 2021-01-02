@@ -128,9 +128,11 @@ defmodule LoPrice.Bot do
     ExGram.send_message!(chat_id,
         """
         Бот настроен. Присылайте боту ссылки на карточки товаров на sbermarket.ru, задавайте целевую цену и бот уведомит вас, когда цена снизится до нужного уровня.
-        Пример ссылки: https://sbermarket.ru/metro/foriel-okhlazhdiennaia-3-4
+        Пример ссылки: https://sbermarket.ru/metro/foriel-okhlazhdiennaia-3-4.
+
+        Либо с помощью команды /login задайте логин и пароль от СберМаркета и бот будет автоматически отслеживать цены на товары, которые вы добавили в избранное на СберМаркете.
         """,
-      bot: @bot)
+      bot: @bot, disable_web_page_preview: true)
 
     # Force price check in the new city for this user
     PriceChecker.check_prices(user_id, true)
