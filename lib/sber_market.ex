@@ -112,7 +112,6 @@ defmodule SberMarket do
 
   defp master_account_auth_headers() do
     case FastGlobal.get(:sbermarket_auth_headers) do
-      [] ->
       nil ->
         headers = login(System.get_env("SBERMARKET_MASTER_LOGIN"), System.get_env("SBERMARKET_MASTER_PASSWORD"))
         FastGlobal.put(:sbermarket_auth_headers, headers)
