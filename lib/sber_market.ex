@@ -82,7 +82,7 @@ defmodule SberMarket do
   def favorites(auth_headers, per_page \\ 1_000), do:
     get!("favorites_list/items?per_page=#{per_page}", auth_headers).body["items"]
 
-  def favorite_by_sku(auth_headers, sku), do:
+  def favorite_by_sku(sku), do:
     master_favorites_cache()
     |> Enum.find(& &1["product"]["sku"] == "#{sku}")
 
@@ -105,7 +105,7 @@ defmodule SberMarket do
             permalink
 
           _ ->
-            favorite_by_sku(master_account_auth_headers(), sku)["product"]["permalink"]
+            favorite_by_sku(sku)["product"]["permalink"]
         end
     end
   end

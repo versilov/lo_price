@@ -49,9 +49,11 @@ defmodule LoPrice.Bot.InlineSearch do
       title: product_name,
       description:  Product.format_price(price),
       input_message_content: %InputTextMessageContent{
-        message_text: "<b>#{product_name}</b>\n#{Product.format_price(price)}\nhttps://sbermarket.ru/metro/#{sku}",
+        message_text: "<b>#{product_name}</b>\n#{Product.format_price(price)}\nhttps://sbermarket.ru/metro/#{SberMarket.favorite_by_sku(sku)["product"]["permalink"] || sku}",
         parse_mode: "HTML"
-      }
+      },
+      reply_markup: ExGram.Dsl.create_inline([[%{text: "Следить за ценой",
+                                                 callback_data: "monitor_sber_sku_#{sku}"}]])
     }
 
 end
