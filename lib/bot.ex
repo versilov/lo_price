@@ -214,7 +214,7 @@ defmodule LoPrice.Bot do
             current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
 
             %{id: monitor_id, target_price: target_price} =Core.create_or_update_product_and_monitor(
-              product_url, sber_product["name"], retailer, user.id, current_price)
+              "https://sbermarket.ru/#{retailer}/#{permalink}", sber_product["name"], retailer, user.id, current_price)
 
             answer(context, "<b>#{sber_product["name"]}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
               reply_markup: edit_monitor_buttons(monitor_id, target_price || current_price),
