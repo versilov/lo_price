@@ -59,7 +59,7 @@ defmodule LoPrice.Bot do
 
     target_price = Product.to_kop(target_price)
 
-    Core.set_monitor_target_price(user_id, message_id, target_price)
+    Core.set_monitor_target_price(user.id, message_id, target_price)
 
     answer(context, "Сообщу когда <b>#{product_name}</b> подешевеет ниже <b>#{Product.format_price(target_price)}</b>",
       parse_mode: "HTML")
@@ -212,11 +212,17 @@ defmodule LoPrice.Bot do
             sber_product = SberMarket.product(permalink, store_id)
 
             current_price = sber_product["offer"]["unit_price"] |> Product.to_kop()
+            url = "https://sbermarket.ru/#{retailer}/#{permalink}"
 
             %{id: monitor_id, target_price: target_price} =Core.create_or_update_product_and_monitor(
-              "https://sbermarket.ru/#{retailer}/#{permalink}", sber_product["name"], retailer, user.id, current_price)
+              url, sber_product["name"], retailer, user.id, current_price)
 
-            answer(context, "<b>#{sber_product["name"]}</b>@#{retailer}\nЦена: <b>#{Product.format_price(current_price)}</b>\nКак подешевеет — сообщу.",
+            answer(context,
+            """
+            <a href=\"#{url}\">#{sber_product["name"]}</a>@#{retailer}
+            Цена: <b>#{Product.format_price(current_price)}</b>
+            Как подешевеет ниже #{Product.format_price(target_price)} — сообщу.
+            """,
               reply_markup: edit_monitor_buttons(monitor_id, target_price || current_price),
               parse_mode: "HTML")
       end

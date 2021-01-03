@@ -83,8 +83,7 @@ defmodule SberMarket do
     get!("favorites_list/items?per_page=#{per_page}", auth_headers).body["items"]
 
   def favorite_by_sku(auth_headers, sku), do:
-    auth_headers
-    |> favorites()
+    master_favorites_cache()
     |> Enum.find(& &1["product"]["sku"] == "#{sku}")
 
   def add_to_favorites(auth_headers, product_sku), do:
@@ -100,8 +99,9 @@ defmodule SberMarket do
         permalink_or_sku
 
       {sku, _} ->
-        case add_to_favorites(master_account_auth_headers(), sku) |> pi() do
+        case add_to_favorites(master_account_auth_headers(), sku) do
           %{"product" => %{"permalink" => permalink}} ->
+            Task.start(&update_master_favorites_cache/0)
             permalink
 
           _ ->
@@ -120,6 +120,13 @@ defmodule SberMarket do
       headers ->
         headers
     end
+  end
+
+  defp master_favorites_cache(), do: FastGlobal.get(:sbermarket_master_favorites) || update_master_favorites_cache()
+  defp update_master_favorites_cache() do
+    favs = favorites(master_account_auth_headers())
+    FastGlobal.put(:sbermarket_master_favorites, favs)
+    favs
   end
 
   def search_suggestions(store_id, query) do
