@@ -43,7 +43,7 @@ defmodule SberMarket do
     [AuthenticityToken: token, Cookie: get_cookie(headers, "remember_user_token")]
   rescue
     _ ->
-      []
+      nil
   end
 
   defp get_cookie(headers, name), do:
@@ -112,6 +112,7 @@ defmodule SberMarket do
 
   defp master_account_auth_headers() do
     case FastGlobal.get(:sbermarket_auth_headers) do
+      [] ->
       nil ->
         headers = login(System.get_env("SBERMARKET_MASTER_LOGIN"), System.get_env("SBERMARKET_MASTER_PASSWORD"))
         FastGlobal.put(:sbermarket_auth_headers, headers)
