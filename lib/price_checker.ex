@@ -24,7 +24,7 @@ defmodule LoPrice.PriceChecker do
 
             # Notify only when price goes lower by more than 3%.
             if current_price < target_price && current_price < last_price &&
-               (last_price - current_price)/last_price > 0.03 do
+               ((last_price - current_price)/last_price > 0.03 || last_price > target_price) do
               store = SberMarket.store(sber_product["offer"]["store_id"])
               image_url = hd(sber_product["images"])["original_url"]
               unit = if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
