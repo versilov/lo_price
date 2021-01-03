@@ -30,7 +30,7 @@ defmodule SberMarket do
     Jason.decode!(body)
   rescue
     e in Jason.DecodeError ->
-      msg = "Cannot decode MetroCC JSON: " <> e.data
+      msg = "Cannot decode SberMarket JSON: " <> e.data
 
       {:error, msg}
   end
@@ -71,14 +71,55 @@ defmodule SberMarket do
           )
       )
 
-  def favorites(auth_headers), do:
-    get!("favorites_list/items?per_page=1000", auth_headers).body["items"]
 
   def search(store_id, query, page \\ 1, per_page \\ 24) do
     get!("v2/products?sid=#{store_id}&per_page=#{per_page}&page=#{page}&q=#{query}").body["products"] || []
   rescue
     _ ->
       []
+  end
+
+  def favorites(auth_headers, per_page \\ 1_000), do:
+    get!("favorites_list/items?per_page=#{per_page}", auth_headers).body["items"]
+
+  def favorite_by_sku(auth_headers, sku), do:
+    auth_headers
+    |> favorites()
+    |> Enum.find(& &1["product"]["sku"] == "#{sku}")
+
+  def add_to_favorites(auth_headers, product_sku), do:
+    post!("favorites_list/items", %{item: %{product_sku: product_sku}}, auth_headers ++ ["Content-Type": "application/json"]).body["item"]
+
+  def remove_from_favorites(auth_headers, product_sku), do:
+    delete!("favorites_list/items/#{product_sku}", auth_headers).body["item"]
+
+  def permalink_from_sku(permalink_or_sku) do
+    case Integer.parse(permalink_or_sku) do
+      # It's not integer value of SKU, probably, it's already permalink
+      :error ->
+        permalink_or_sku
+
+      {sku, _} ->
+        case add_to_favorites(master_account_auth_headers(), sku) |> pi() do
+          %{"product" => %{"permalink" => permalink}} ->
+            permalink
+
+          _ ->
+            favorite_by_sku(master_account_auth_headers(), sku)["product"]["permalink"]
+        end
+    end
+  end
+
+  defp master_account_auth_headers() do
+    case FastGlobal.get(:sbermarket_auth_headers) do
+      nil ->
+        headers = login(System.get_env("SBERMARKET_MASTER_LOGIN"), System.get_env("SBERMARKET_MASTER_PASSWORD"))
+        FastGlobal.put(:sbermarket_auth_headers, headers)
+        headers
+
+      headers ->
+        headers
+    end
   end
 
   def search_suggestions(store_id, query) do
