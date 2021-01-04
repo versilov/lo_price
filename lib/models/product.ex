@@ -19,28 +19,32 @@ defmodule LoPrice.Product do
     |> validate_required([:name, :retailer, :url])
   end
 
-  def by_url(url), do:
-    Product
-    |> where(url: ^url)
-    |> Repo.one()
+  def by_url(url),
+    do:
+      Product
+      |> where(url: ^url)
+      |> Repo.one()
 
-  def by_id(product_id), do:
-    Product
-    |> where(id: ^product_id)
-    |> Repo.one()
+  def by_id(product_id),
+    do:
+      Product
+      |> where(id: ^product_id)
+      |> Repo.one()
 
-  def to_kop(float), do: trunc(float*100)
+  def to_kop(float), do: trunc(float * 100)
   def to_rub(integer), do: integer / 100.0
 
   def format_price(nil), do: ""
-  def format_price(price) when is_float(price), do:
-    price
-    |> :erlang.float_to_binary(decimals: 0)
-    |> Kernel.<>("₽")
 
-  def format_price(price_in_kops) when is_integer(price_in_kops), do:
-    price_in_kops
-    |> to_rub()
-    |> format_price()
+  def format_price(price) when is_float(price),
+    do:
+      price
+      |> :erlang.float_to_binary(decimals: 0)
+      |> Kernel.<>("₽")
 
+  def format_price(price_in_kops) when is_integer(price_in_kops),
+    do:
+      price_in_kops
+      |> to_rub()
+      |> format_price()
 end

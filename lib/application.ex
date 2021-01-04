@@ -6,7 +6,6 @@ defmodule LoPrice.Application do
   use Application
 
   def start(_type, _args) do
-
     children = [
       # Start the Ecto repository
       LoPrice.Repo,
@@ -20,8 +19,7 @@ defmodule LoPrice.Application do
       # {LoPrice.Worker, arg},
       :hackney_pool.child_spec(:sbermarket, timeout: 63_000, max_connections: 108),
       ExGram,
-      {LoPrice.Bot,
-           [method: :polling, token: System.get_env("TELEGRAM_LO_PRICE_BOT_TOKEN")]},
+      {LoPrice.Bot, [method: :polling, token: System.get_env("TELEGRAM_LO_PRICE_BOT_TOKEN")]},
       LoPrice.MonitorServer
     ]
 

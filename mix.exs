@@ -48,6 +48,7 @@ defmodule LoPrice.MixProject do
       {:ex_gram, github: "versilov/ex_gram"},
       {:fastglobal, "~> 1.0"},
       {:httpoison, "~> 1.7"},
+      {:floki, "~> 0.29.0"},
       {:tesla, "~> 1.2"},
       {:hackney, "~> 1.12"},
       {:ex_pi, "~> 1.0"},

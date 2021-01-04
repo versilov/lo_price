@@ -17,7 +17,13 @@ defmodule LoPrice.Monitor do
   @doc false
   def changeset(monitor, attrs) do
     monitor
-    |> cast(attrs, [:target_price, :price_history, :user_id, :product_id, :target_price_message_id])
+    |> cast(attrs, [
+      :target_price,
+      :price_history,
+      :user_id,
+      :product_id,
+      :target_price_message_id
+    ])
     |> validate_required([:target_price, :price_history, :user_id, :product_id])
   end
 
@@ -35,8 +41,9 @@ defmodule LoPrice.Monitor do
     end
   end
 
-  def update_price_history(monitor, current_price), do:
-    monitor
-    |> Monitor.changeset(Monitor.maybe_update_price_history(%{}, monitor, current_price))
-    |> Repo.update()
+  def update_price_history(monitor, current_price),
+    do:
+      monitor
+      |> Monitor.changeset(Monitor.maybe_update_price_history(%{}, monitor, current_price))
+      |> Repo.update()
 end

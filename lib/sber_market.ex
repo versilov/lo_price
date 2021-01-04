@@ -9,21 +9,21 @@ defmodule SberMarket do
 
   @impl HTTPoison.Base
   def process_request_options(opts),
-    do: opts ++ [
-      hackney: [
-        pool: :sbermarket,
-        ssl_options: [versions: [:"tlsv1.2"]]
-      ]
-    ]
+    do:
+      opts ++
+        [
+          hackney: [
+            pool: :sbermarket,
+            ssl_options: [versions: [:"tlsv1.2"]]
+          ]
+        ]
 
   @impl HTTPoison.Base
-  def process_request_headers(headers), do:
-    headers ++ [Connection: "keep-alive"]
+  def process_request_headers(headers), do: headers ++ [Connection: "keep-alive"]
 
   @impl HTTPoison.Base
   def process_request_body(""), do: ""
-  def process_request_body(body), do:
-    Jason.encode!(body)
+  def process_request_body(body), do: Jason.encode!(body)
 
   @impl HTTPoison.Base
   def process_response_body(body) do
@@ -36,9 +36,12 @@ defmodule SberMarket do
   end
 
   def login(email, password) do
-    %{body: %{"csrf_token" => token}, headers: headers} =post!("user_sessions",
-      %{user: %{email: email, password: password}},
-      ["Content-Type": "application/json"])
+    %{body: %{"csrf_token" => token}, headers: headers} =
+      post!(
+        "user_sessions",
+        %{user: %{email: email, password: password}},
+        "Content-Type": "application/json"
+      )
 
     [AuthenticityToken: token, Cookie: get_cookie(headers, "remember_user_token")]
   rescue
@@ -46,13 +49,14 @@ defmodule SberMarket do
       nil
   end
 
-  defp get_cookie(headers, name), do:
-    headers
-    |> Enum.find(fn
-      {key, value} -> String.match?(key, ~r/\Aset-cookie\z/i) && String.match?(value, ~r/\A#{name}=/i)
-    end)
-    |> elem(1)
-
+  defp get_cookie(headers, name),
+    do:
+      headers
+      |> Enum.find(fn
+        {key, value} ->
+          String.match?(key, ~r/\Aset-cookie\z/i) && String.match?(value, ~r/\A#{name}=/i)
+      end)
+      |> elem(1)
 
   def product(permalink, store_id \\ "105") do
     get!("stores/#{store_id}/products/#{permalink}").body["product"]
@@ -71,26 +75,33 @@ defmodule SberMarket do
           )
       )
 
-
   def search(store_id, query, page \\ 1, per_page \\ 24) do
-    get!("v2/products?sid=#{store_id}&per_page=#{per_page}&page=#{page}&q=#{query}").body["products"] || []
+    get!("v2/products?sid=#{store_id}&per_page=#{per_page}&page=#{page}&q=#{query}").body[
+      "products"
+    ] || []
   rescue
     _ ->
       []
   end
 
-  def favorites(auth_headers, per_page \\ 1_000), do:
-    get!("favorites_list/items?per_page=#{per_page}", auth_headers).body["items"]
+  def favorites(auth_headers, per_page \\ 1_000),
+    do: get!("favorites_list/items?per_page=#{per_page}", auth_headers).body["items"]
 
-  def favorite_by_sku(sku), do:
-    master_favorites_cache()
-    |> Enum.find(& &1["product"]["sku"] == "#{sku}")
+  def favorite_by_sku(sku),
+    do:
+      master_favorites_cache()
+      |> Enum.find(&(&1["product"]["sku"] == "#{sku}"))
 
-  def add_to_favorites(auth_headers, product_sku), do:
-    post!("favorites_list/items", %{item: %{product_sku: product_sku}}, auth_headers ++ ["Content-Type": "application/json"]).body["item"]
+  def add_to_favorites(auth_headers, product_sku),
+    do:
+      post!(
+        "favorites_list/items",
+        %{item: %{product_sku: product_sku}},
+        auth_headers ++ ["Content-Type": "application/json"]
+      ).body["item"]
 
-  def remove_from_favorites(auth_headers, product_sku), do:
-    delete!("favorites_list/items/#{product_sku}", auth_headers).body["item"]
+  def remove_from_favorites(auth_headers, product_sku),
+    do: delete!("favorites_list/items/#{product_sku}", auth_headers).body["item"]
 
   def permalink_from_sku(permalink_or_sku) do
     case Integer.parse(permalink_or_sku) do
@@ -113,7 +124,12 @@ defmodule SberMarket do
   defp master_account_auth_headers() do
     case FastGlobal.get(:sbermarket_auth_headers) do
       nil ->
-        headers = login(System.get_env("SBERMARKET_MASTER_LOGIN"), System.get_env("SBERMARKET_MASTER_PASSWORD"))
+        headers =
+          login(
+            System.get_env("SBERMARKET_MASTER_LOGIN"),
+            System.get_env("SBERMARKET_MASTER_PASSWORD")
+          )
+
         FastGlobal.put(:sbermarket_auth_headers, headers)
         headers
 
@@ -122,7 +138,9 @@ defmodule SberMarket do
     end
   end
 
-  defp master_favorites_cache(), do: FastGlobal.get(:sbermarket_master_favorites) || update_master_favorites_cache()
+  defp master_favorites_cache(),
+    do: FastGlobal.get(:sbermarket_master_favorites) || update_master_favorites_cache()
+
   defp update_master_favorites_cache() do
     favs = favorites(master_account_auth_headers())
     FastGlobal.put(:sbermarket_master_favorites, favs)
@@ -154,11 +172,12 @@ defmodule SberMarket do
       nil
   end
 
-  def ids(list), do: Enum.map(list, & &1["id"] || &1[:id])
+  def ids(list), do: Enum.map(list, &(&1["id"] || &1[:id]))
 
-  def store(store_id) when is_integer(store_id), do:
-    stores()
-    |> Enum.find(& &1["id"] == store_id)
+  def store(store_id) when is_integer(store_id),
+    do:
+      stores()
+      |> Enum.find(&(&1["id"] == store_id))
 
   def stores_by_id(retailer \\ nil),
     do:
@@ -180,12 +199,14 @@ defmodule SberMarket do
       |> Enum.sort(fn {_city1, count1}, {_city2, count2} -> count1 >= count2 end)
       |> Enum.map(fn {city, _count} -> city end)
 
-  defp filter_stores(stores, retailer, city), do:
-    stores
-    |> filter_by_retailer(retailer)
-    |> filter_by_city(city)
+  defp filter_stores(stores, retailer, city),
+    do:
+      stores
+      |> filter_by_retailer(retailer)
+      |> filter_by_city(city)
 
   defp filter_by_retailer(stores, nil), do: stores
+
   defp filter_by_retailer(stores, retailer) when is_binary(retailer),
     do:
       stores
@@ -195,6 +216,7 @@ defmodule SberMarket do
       end)
 
   defp filter_by_city(stores, nil), do: stores
+
   defp filter_by_city(stores, city) when is_binary(city),
     do:
       stores
@@ -206,7 +228,8 @@ defmodule SberMarket do
   defp stores_cache() do
     case FastGlobal.get(:sbermarket_stores) do
       nil ->
-        FastGlobal.put(:sbermarket_stores, []) # Put empty list to mark loading in progress
+        # Put empty list to mark loading in progress
+        FastGlobal.put(:sbermarket_stores, [])
         IO.puts("Loading stores...")
         stores = get!("stores").body["stores"]
         IO.puts("Done loading stores.")
@@ -223,17 +246,20 @@ defmodule SberMarket do
     end
   end
 
-  def parse_product_url(url), do:
+  def parse_product_url(url),
+    do:
       url
       |> URI.parse()
       |> Map.get(:path)
       |> String.split("/", trim: true)
       |> List.to_tuple()
 
+  def find_lowest_price_in_stores(permalink, store_ids) when is_list(store_ids),
+    do:
+      store_ids
+      |> Enum.map(&product(permalink, &1))
+      |> Enum.reject(&is_nil/1)
+      |> Enum.min_by(& &1["offer"]["unit_price"], fn -> nil end)
 
-  def find_lowest_price_in_stores(permalink, store_ids) when is_list(store_ids), do:
-    store_ids
-    |> Enum.map(&product(permalink, &1))
-    |> Enum.reject(&is_nil/1)
-    |> Enum.min_by(& &1["offer"]["unit_price"], fn -> nil end)
+  def unit(sber_product), do: if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
 end

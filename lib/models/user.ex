@@ -21,17 +21,20 @@ defmodule LoPrice.User do
     |> unique_constraint(:telegram_user_id)
   end
 
-  def by_telegram_id(telegram_user_id), do:
-    User
-    |> where(telegram_user_id: ^telegram_user_id)
-    |> Repo.one()
+  def by_telegram_id(telegram_user_id),
+    do:
+      User
+      |> where(telegram_user_id: ^telegram_user_id)
+      |> Repo.one()
 
-  def by_id(user_id), do:
-    User
-    |> where(id: ^user_id)
-    |> Repo.one()
+  def by_id(user_id),
+    do:
+      User
+      |> where(id: ^user_id)
+      |> Repo.one()
 
   def encode_credentials(login, password), do: Base.encode64("#{login}:#{password}")
+
   def decode_credentials(credentials),
     do:
       credentials

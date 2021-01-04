@@ -2,6 +2,7 @@ defmodule SberMarket.FavoritesMonitor do
   import Ecto.Query
 
   alias LoPrice.{User, Repo, Bot}
+
   def monitor() do
     from(u in User, where: not is_nil(fragment("extra->>'sbermarket_auth'")))
     |> Repo.all()

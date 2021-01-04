@@ -5,8 +5,16 @@ defmodule LoPrice.Bot.CitySelector do
     quote do
       alias LoPrice.Bot.CitySelector
 
-      def handle({:callback_query, %{id: query_id, data: "page_" <> page, message: %{chat: %{id: chat_id}, message_id: message_id}}}, _context), do:
-        LoPrice.Bot.CitySelector.handle_callback_query(query_id, page, chat_id, message_id)
+      def handle(
+            {:callback_query,
+             %{
+               id: query_id,
+               data: "page_" <> page,
+               message: %{chat: %{id: chat_id}, message_id: message_id}
+             }},
+            _context
+          ),
+          do: LoPrice.Bot.CitySelector.handle_callback_query(query_id, page, chat_id, message_id)
     end
   end
 
@@ -26,12 +34,16 @@ defmodule LoPrice.Bot.CitySelector do
     )
   end
 
-  def select_city(context, retailer, selected_city \\ nil), do:
-    ExGram.Dsl.answer(context, "В каком городе отслеживать цены?", reply_markup: cities_buttons(0, retailer, selected_city))
+  def select_city(context, retailer, selected_city \\ nil),
+    do:
+      ExGram.Dsl.answer(context, "В каком городе отслеживать цены?",
+        reply_markup: cities_buttons(0, retailer, selected_city)
+      )
 
   @lines_in_page 5
   @buttons_in_line 3
-  def cities_buttons(page, retailer, selected_city), do:
+  def cities_buttons(page, retailer, selected_city),
+    do:
       retailer
       |> SberMarket.stores_cities()
       |> Enum.map(
@@ -45,17 +57,21 @@ defmodule LoPrice.Bot.CitySelector do
       |> add_browse_buttons(page)
       |> ExGram.Dsl.create_inline()
 
-  defp add_browse_buttons(buttons, page), do:
-        prev_button(page) ++
-        buttons
-        ++ next_button(page, last_page?(buttons))
+  defp add_browse_buttons(buttons, page),
+    do:
+      prev_button(page) ++
+        buttons ++
+        next_button(page, last_page?(buttons))
 
-  defp last_page?(buttons_page), do: length(buttons_page) < @lines_in_page || length(List.last(buttons_page)) < @buttons_in_line
+  defp last_page?(buttons_page),
+    do:
+      length(buttons_page) < @lines_in_page || length(List.last(buttons_page)) < @buttons_in_line
 
   defp prev_button(0), do: []
-  defp prev_button(page), do: [[%{text: "▲ Назад ▲", callback_data: "page_#{page-1}"}]]
+  defp prev_button(page), do: [[%{text: "▲ Назад ▲", callback_data: "page_#{page - 1}"}]]
 
   defp next_button(_page, true = _last_page), do: []
-  defp next_button(page, _last_page), do: [[%{text: "▼ Дальше ▼", callback_data: "page_#{page+1}"}]]
 
+  defp next_button(page, _last_page),
+    do: [[%{text: "▼ Дальше ▼", callback_data: "page_#{page + 1}"}]]
 end
