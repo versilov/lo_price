@@ -90,6 +90,6 @@ defmodule LoPrice.Bot.InlineSearch do
   defp sber_product_url_from_sku(sku),
     do:
       "https://sbermarket.ru/metro/#{
-        SberMarket.favorite_by_sku(sku)["product"]["permalink"] || sku
+        SberMarket.permalinks_cache()[sku] || sku
       }"
 end
