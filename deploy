@@ -8,7 +8,7 @@ SECONDS=0
 git commit -am "$1"
 git push
 
-ssh -t -A -S none -q -o ConnectTimeout=60 ex@extrapost.ru "cd ~/$APP && git pull && source ~/.profile && MIX_ENV=prod mix deps.get && MIX_ENV=prod mix ecto.migrate && MIX_ENV=prod mix release --overwrite --quiet && ./_build/prod/rel/$APP/bin/$APP restart || ./_build/prod/rel/$APP/bin/$APP daemon"
+ssh -t -A -S none -q -o ConnectTimeout=60 ex@extrapost.ru "cd ~/$APP && git pull && source ~/.profile && MIX_ENV=prod mix ecto.migrate && MIX_ENV=prod mix release --overwrite --quiet && ./_build/prod/rel/$APP/bin/$APP restart || ./_build/prod/rel/$APP/bin/$APP daemon"
 
 # Print elapsed seconds
 echo "Deployed in $SECONDS sec."
