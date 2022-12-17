@@ -19,7 +19,7 @@ defmodule SberMarket do
         ]
 
   @impl HTTPoison.Base
-  def process_request_headers(headers), do: headers ++ [Connection: "keep-alive"]
+  def process_request_headers(headers), do: (headers || []) ++ [Connection: "keep-alive"]
 
   @impl HTTPoison.Base
   def process_request_body(""), do: ""
@@ -87,8 +87,6 @@ defmodule SberMarket do
   def favorites(auth_headers, per_page \\ 1_000),
     do: get!("favorites_list/items?per_page=#{per_page}", auth_headers).body["items"]
 
-
-
   def add_to_favorites(auth_headers, product_sku),
     do:
       post!(
@@ -150,8 +148,8 @@ defmodule SberMarket do
     permalinks
   end
 
-  defp add_to_permalinks_cache(sku, permalink), do:
-    FastGlobal.put(:sbermarket_permalinks, Map.put(permalinks_cache(), "#{sku}", permalink))
+  defp add_to_permalinks_cache(sku, permalink),
+    do: FastGlobal.put(:sbermarket_permalinks, Map.put(permalinks_cache(), "#{sku}", permalink))
 
   def search_suggestions(store_id, query) do
     get!("stores/#{store_id}/search_suggestions?q=#{query}").body["suggestion"]["offers"] || []
@@ -163,7 +161,7 @@ defmodule SberMarket do
   # Returns closest stores, one of each brand.
   # E.g. for Samara returns one Metro, one Auchan, one Lenta and one Beethoven.
   def stores(%{latitude: lat, longitude: lon}) do
-    get!("v2/stores?lon=#{lon}&lat=#{lat}").body["stores"]
+    get!("v3/stores?lon=#{lon}&lat=#{lat}").body
   rescue
     _ ->
       []
@@ -237,7 +235,20 @@ defmodule SberMarket do
         # Put empty list to mark loading in progress
         FastGlobal.put(:sbermarket_stores, [])
         IO.puts("Loading stores...")
-        stores = get!("stores").body["stores"]
+
+        {:ok, response} =
+          get(
+            "v3/stores?lat=53.224088&lon=50.176092",
+            [
+              {"Client-Token", "7ba97b6f4049436dab90c789f946ee2f"},
+              {"API-Version", "3.0"}
+            ],
+            recv_timeout: 270_000
+          )
+          |> pi()
+
+        stores = response.body
+
         IO.puts("Done loading stores.")
         FastGlobal.put(:sbermarket_stores, stores)
         stores
@@ -267,5 +278,6 @@ defmodule SberMarket do
       |> Enum.reject(&is_nil/1)
       |> Enum.min_by(& &1["offer"]["unit_price"], fn -> nil end)
 
-  def unit(sber_product), do: if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
+  def unit(sber_product),
+    do: if(sber_product["offer"]["price_type"] == "per_package", do: "кг", else: nil)
 end

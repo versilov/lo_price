@@ -17,7 +17,11 @@ defmodule LoPrice.Application do
       LoPriceWeb.Endpoint,
       # Start a worker by calling: LoPrice.Worker.start_link(arg)
       # {LoPrice.Worker, arg},
-      :hackney_pool.child_spec(:sbermarket, timeout: 63_000, max_connections: 108),
+      :hackney_pool.child_spec(:sbermarket,
+        recv_timeout: 63_000,
+        timeout: 63_000,
+        max_connections: 108
+      ),
       ExGram,
       {LoPrice.Bot, [method: :polling, token: System.get_env("TELEGRAM_LO_PRICE_BOT_TOKEN")]},
       LoPrice.MonitorServer

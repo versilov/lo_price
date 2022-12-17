@@ -54,7 +54,7 @@ defmodule LoPrice.MonitorServer do
       |> Map.new()
 
     send(self(), :monitor)
-    send(self(), :monitor_sbermarket_favorites)
+    # send(self(), :monitor_sbermarket_favorites)
     send(self(), :monitor_predefined)
 
     {:ok, {products, stores}}
